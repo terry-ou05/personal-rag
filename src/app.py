@@ -11,6 +11,8 @@ from langchain_huggingface.embeddings import HuggingFaceEmbeddings
 from langchain_classic.chains import create_retrieval_chain
 from langchain_classic.chains.combine_documents import create_stuff_documents_chain
 
+from ingest import build_knowledge_base
+
 
 load_dotenv()
 
@@ -22,6 +24,7 @@ EMBEDDING_MODEL = "BAAI/bge-small-zh-v1.5"
 LLM_MODEL = "deepseek-chat"
 COLLECTION_NAME = "personal_knowledge"
 RETRIEVER_TOP_K = 4
+SUPPORTED_UPLOAD_SUFFIXES = {".txt", ".md", ".pdf"}
 
 
 def format_source(metadata: dict, index: int) -> str:
@@ -40,16 +43,47 @@ def format_source(metadata: dict, index: int) -> str:
 
 def get_raw_documents() -> list[Path]:
     """返回 data/raw 目录下支持的知识库原始文件。"""
-    supported_suffixes = {".txt", ".md", ".pdf"}
-
     if not DATA_DIR.exists():
         return []
 
     return sorted(
         file_path
         for file_path in DATA_DIR.iterdir()
-        if file_path.is_file() and file_path.suffix.lower() in supported_suffixes
+        if file_path.is_file() and file_path.suffix.lower() in SUPPORTED_UPLOAD_SUFFIXES
     )
+
+
+def save_uploaded_documents(uploaded_files) -> int:
+    """Save supported uploaded files into data/raw using safe file names."""
+    if not uploaded_files:
+        return 0
+
+    DATA_DIR.mkdir(parents=True, exist_ok=True)
+    saved_count = 0
+    processed_uploads = st.session_state.setdefault("processed_uploads", set())
+
+    for uploaded_file in uploaded_files:
+        file_name = Path(uploaded_file.name).name
+        suffix = Path(file_name).suffix.lower()
+
+        if suffix not in SUPPORTED_UPLOAD_SUFFIXES:
+            st.warning(f"Unsupported file type skipped: {file_name}")
+            continue
+
+        upload_key = f"{file_name}:{uploaded_file.size}"
+        if upload_key in processed_uploads:
+            continue
+
+        target_path = DATA_DIR / file_name
+        if target_path.exists():
+            st.info(f"Overwriting existing file: {file_name}")
+
+        target_path.write_bytes(uploaded_file.getvalue())
+        processed_uploads.add(upload_key)
+        saved_count += 1
+
+    return saved_count
+
 
 @st.cache_resource
 def build_rag_chain():
@@ -119,6 +153,31 @@ st.set_page_config(
 st.title("Personal Knowledge Base")
 st.caption("Ask questions based on your local documents.")
 
+uploaded_files = st.file_uploader(
+    "Upload documents",
+    type=["txt", "md", "pdf"],
+    accept_multiple_files=True,
+)
+saved_files = save_uploaded_documents(uploaded_files)
+
+if saved_files:
+    st.success(f"Uploaded {saved_files} file(s). Please rebuild the knowledge base.")
+
+if st.button("Rebuild Knowledge Base"):
+    with st.spinner("Rebuilding knowledge base..."):
+        st.cache_resource.clear()
+        rebuild_result = build_knowledge_base(reset=True)
+        st.cache_resource.clear()
+
+    if rebuild_result["documents"] == 0 or rebuild_result["chunks"] == 0:
+        st.warning("No valid documents found in data/raw. Please upload supported files first.")
+    else:
+        st.success(
+            "Knowledge base rebuilt. "
+            f"Documents: {rebuild_result['documents']}, "
+            f"Chunks: {rebuild_result['chunks']}"
+        )
+
 with st.sidebar:
     st.header("System Info")
     st.markdown(f"**LLM:** {LLM_MODEL}")
@@ -141,7 +200,8 @@ with st.sidebar:
     st.divider()
 
     st.markdown("### How to update knowledge base")
-    st.caption("Run this command in the project root:")
+    st.caption("Upload documents, then click Rebuild Knowledge Base.")
+    st.caption("Or run this command in the project root:")
     st.markdown(r"`.\.venv\Scripts\python.exe src\ingest.py`")
     
 if not os.getenv("DEEPSEEK_API_KEY"):

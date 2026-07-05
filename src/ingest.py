@@ -1,4 +1,5 @@
 from pathlib import Path
+import shutil
 
 from langchain_chroma import Chroma
 from langchain_core.documents import Document
@@ -43,7 +44,7 @@ def load_pdf_file(path: Path) -> list[Document]:
 
 def load_documents() -> list[Document]:
     if not RAW_DATA_DIR.exists():
-        raise FileNotFoundError(f"资料目录不存在: {RAW_DATA_DIR}")
+        return []
 
     documents = []
     for path in sorted(RAW_DATA_DIR.rglob("*")):
@@ -59,6 +60,19 @@ def load_documents() -> list[Document]:
             documents.extend(load_pdf_file(path))
 
     return documents
+
+
+def reset_vector_store() -> None:
+    if not CHROMA_DIR.exists():
+        return
+
+    project_root = PROJECT_ROOT.resolve()
+    db_dir = CHROMA_DIR.resolve()
+
+    if not db_dir.is_relative_to(project_root):
+        raise RuntimeError(f"Refusing to remove vector store outside project: {db_dir}")
+
+    shutil.rmtree(db_dir)
 
 
 def build_vector_store(documents: list[Document]) -> list[Document]:
@@ -81,17 +95,38 @@ def build_vector_store(documents: list[Document]) -> list[Document]:
     return chunks
 
 
-def main() -> None:
+def build_knowledge_base(reset: bool = True) -> dict:
+    if reset:
+        reset_vector_store()
+
     documents = load_documents()
     if not documents:
-        print(f"未在 {RAW_DATA_DIR} 找到可用的 .txt、.md 或 .pdf 文档。")
-        return
+        return {
+            "documents": 0,
+            "chunks": 0,
+            "db_path": str(CHROMA_DIR),
+        }
 
     chunks = build_vector_store(documents)
 
-    print(f"原始文档数量: {len(documents)}")
-    print(f"chunk 数量: {len(chunks)}")
-    print(f"向量库位置: {CHROMA_DIR}")
+    return {
+        "documents": len(documents),
+        "chunks": len(chunks),
+        "db_path": str(CHROMA_DIR),
+    }
+
+
+def main() -> None:
+    result = build_knowledge_base(reset=True)
+
+    print("知识库构建完成。")
+
+    if result["documents"] == 0:
+        print(f"未在 {RAW_DATA_DIR} 找到可用的 .txt、.md 或 .pdf 文档。")
+
+    print(f"原始文档数量: {result['documents']}")
+    print(f"切分后片段数量: {result['chunks']}")
+    print(f"向量数据库位置: {result['db_path']}")
 
 
 if __name__ == "__main__":

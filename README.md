@@ -13,6 +13,16 @@ Personal RAG 是一个最小可运行的个人知识库问答系统。它会把 
 - pypdf
 - Streamlit
 
+## Features
+
+- TXT / Markdown / PDF document ingestion
+- Local Chroma vector database
+- DeepSeek-based answers with retrieved context
+- Streamlit web interface
+- Reference source display
+- Web-based document upload
+- One-click knowledge base rebuild
+
 ## 配置 .env
 
 在项目根目录创建或编辑 `.env`：
@@ -70,3 +80,17 @@ chroma_db
 ```powershell
 & 'C:\Users\14985\Desktop\personal-rag\.venv\Scripts\python.exe' -m streamlit run src\app.py
 ```
+
+## 网页端使用 V4 功能
+
+1. 打开 Streamlit 页面。
+2. 上传 `.txt`、`.md` 或 `.pdf` 文件。
+3. 点击 `Rebuild Knowledge Base`。
+4. 等待页面显示 documents/chunks 数量。
+5. 基于新上传的资料提问，并查看参考来源。
+
+## Notes
+
+- 上传到 `data/raw/` 的个人文件默认不应提交到 Git。
+- `chroma_db` 是本地生成的向量数据库，不提交到 Git。
+- `.env` 只保存本地 API Key，不提交到 Git。
