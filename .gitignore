@@ -17,6 +17,9 @@ chroma_db/
 # Local/private documents
 data/raw/*
 !data/raw/my_notes.txt
+!data/raw/ai_learning_notes.md
+!data/raw/internship_notes.md
+!data/raw/project_notes.md
 !data/raw/.gitkeep
 
 # OS / editor
