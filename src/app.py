@@ -1,4 +1,5 @@
 import os
+import hashlib
 from pathlib import Path
 
 import streamlit as st
@@ -41,6 +42,29 @@ def format_source(metadata: dict, index: int) -> str:
 
     return f"Source {index}: {file_name} | Page: {page_text}"
 
+
+def build_source_items(docs) -> list[dict]:
+    source_items = []
+    for index, doc in enumerate(docs, start=1):
+        source_items.append(
+            {
+                "title": format_source(doc.metadata, index),
+                "content": doc.page_content,
+            }
+        )
+    return source_items
+
+
+def render_sources(sources: list[dict]) -> None:
+    if not sources:
+        st.info("No reference snippets found.")
+        return
+
+    for source in sources:
+        with st.expander(source["title"]):
+            st.markdown(source["content"])
+
+
 def get_raw_documents() -> list[Path]:
     """返回 data/raw 目录下支持的知识库原始文件。"""
     if not DATA_DIR.exists():
@@ -53,13 +77,13 @@ def get_raw_documents() -> list[Path]:
     )
 
 
-def save_uploaded_documents(uploaded_files) -> int:
+def save_uploaded_documents(uploaded_files) -> list[str]:
     """Save supported uploaded files into data/raw using safe file names."""
     if not uploaded_files:
-        return 0
+        return []
 
     DATA_DIR.mkdir(parents=True, exist_ok=True)
-    saved_count = 0
+    saved_files = []
     processed_uploads = st.session_state.setdefault("processed_uploads", set())
 
     for uploaded_file in uploaded_files:
@@ -70,23 +94,25 @@ def save_uploaded_documents(uploaded_files) -> int:
             st.warning(f"Unsupported file type skipped: {file_name}")
             continue
 
-        upload_key = f"{file_name}:{uploaded_file.size}"
+        file_bytes = uploaded_file.getvalue()
+        file_hash = hashlib.sha256(file_bytes).hexdigest()
+        upload_key = f"{file_name}:{uploaded_file.size}:{file_hash}"
         if upload_key in processed_uploads:
             continue
 
         target_path = DATA_DIR / file_name
         if target_path.exists():
-            st.info(f"Overwriting existing file: {file_name}")
+            st.info(f"Existing file overwritten: {file_name}")
 
-        target_path.write_bytes(uploaded_file.getvalue())
+        target_path.write_bytes(file_bytes)
         processed_uploads.add(upload_key)
-        saved_count += 1
+        saved_files.append(file_name)
 
-    return saved_count
+    return saved_files
 
 
 @st.cache_resource
-def build_rag_chain():
+def build_rag_chain(top_k: int):
     """构建 RAG 问答链。"""
     embeddings = HuggingFaceEmbeddings(
         model_name=EMBEDDING_MODEL
@@ -99,7 +125,7 @@ def build_rag_chain():
     )
 
     retriever = vectorstore.as_retriever(
-        search_kwargs={"k": RETRIEVER_TOP_K}
+        search_kwargs={"k": top_k}
     )
 
     llm = ChatDeepSeek(
@@ -145,25 +171,79 @@ def build_rag_chain():
 
 
 st.set_page_config(
-    page_title="Personal Knowledge Base",
+    page_title="AI Learning Knowledge Assistant",
     page_icon="📚",
     layout="centered",
 )
 
-st.title("Personal Knowledge Base")
-st.caption("Ask questions based on your local documents.")
+if "messages" not in st.session_state:
+    st.session_state.messages = []
+
+st.title("AI Learning Knowledge Assistant")
+st.caption("Ask questions based on your local AI learning documents.")
 
 uploaded_files = st.file_uploader(
     "Upload documents",
     type=["txt", "md", "pdf"],
     accept_multiple_files=True,
 )
-saved_files = save_uploaded_documents(uploaded_files)
+saved_file_names = save_uploaded_documents(uploaded_files)
 
-if saved_files:
-    st.success(f"Uploaded {saved_files} file(s). Please rebuild the knowledge base.")
+if saved_file_names:
+    st.success(
+        f"Uploaded {len(saved_file_names)} file(s). "
+        "Click Rebuild Knowledge Base to make them searchable."
+    )
 
-if st.button("Rebuild Knowledge Base"):
+raw_documents = get_raw_documents()
+db_ready = DB_DIR.exists()
+
+with st.sidebar:
+    st.header("System Info")
+    st.markdown(f"**LLM:** {LLM_MODEL}")
+    st.markdown(f"**Embedding:** {EMBEDDING_MODEL}")
+    st.markdown("**Vector DB:** Chroma")
+    retriever_top_k = st.slider(
+        "Retriever top-k",
+        min_value=1,
+        max_value=8,
+        value=RETRIEVER_TOP_K,
+    )
+    st.markdown(f"**Retriever top-k:** {retriever_top_k}")
+    st.markdown(f"**Knowledge base path:** `{DB_DIR.name}`")
+
+    st.divider()
+
+    st.markdown("### Documents")
+    if not raw_documents:
+        st.caption("No documents found in data/raw")
+    else:
+        for index, file_path in enumerate(raw_documents, start=1):
+            st.markdown(f"{index}. `{file_path.name}`")
+
+    st.divider()
+
+    st.markdown("### Knowledge Base")
+    st.markdown(f"**Vector DB status:** {'Ready' if db_ready else 'Not built'}")
+    st.markdown(f"**Raw files:** {len(raw_documents)}")
+    st.markdown("**Supported formats:** `.txt` / `.md` / `.pdf`")
+
+    st.divider()
+
+    st.markdown("### Actions")
+    if st.button("Clear Chat History"):
+        st.session_state.messages = []
+        st.rerun()
+
+    rebuild_clicked = st.button("Rebuild Knowledge Base")
+
+    st.divider()
+
+    st.markdown("### How to update knowledge base")
+    st.caption("Or run this command in the project root:")
+    st.markdown(r"`.\.venv\Scripts\python.exe src\ingest.py`")
+
+if rebuild_clicked:
     with st.spinner("Rebuilding knowledge base..."):
         st.cache_resource.clear()
         rebuild_result = build_knowledge_base(reset=True)
@@ -178,32 +258,6 @@ if st.button("Rebuild Knowledge Base"):
             f"Chunks: {rebuild_result['chunks']}"
         )
 
-with st.sidebar:
-    st.header("System Info")
-    st.markdown(f"**LLM:** {LLM_MODEL}")
-    st.markdown(f"**Embedding:** {EMBEDDING_MODEL}")
-    st.markdown("**Vector DB:** Chroma")
-    st.markdown(f"**Retriever top-k:** {RETRIEVER_TOP_K}")
-    st.markdown(f"**Knowledge base path:** `{DB_DIR.name}`")
-
-    st.divider()
-
-    st.markdown("### Documents")
-    raw_documents = get_raw_documents()
-
-    if not raw_documents:
-            st.caption("No documents found in data/raw")
-    else:
-        for index, file_path in enumerate(raw_documents, start=1):
-            st.markdown(f"{index}. `{file_path.name}`")
-
-    st.divider()
-
-    st.markdown("### How to update knowledge base")
-    st.caption("Upload documents, then click Rebuild Knowledge Base.")
-    st.caption("Or run this command in the project root:")
-    st.markdown(r"`.\.venv\Scripts\python.exe src\ingest.py`")
-    
 if not os.getenv("DEEPSEEK_API_KEY"):
     st.error("Please set DEEPSEEK_API_KEY in your .env file.")
     st.stop()
@@ -212,29 +266,36 @@ if not DB_DIR.exists():
     st.warning("Please run src/ingest.py first to build the knowledge base.")
     st.stop()
 
-question = st.text_input(
-    "请输入问题",
-    placeholder="Ask something about your documents...",
-)
+for message in st.session_state.messages:
+    with st.chat_message(message["role"]):
+        st.markdown(message["content"])
+        if message["role"] == "assistant":
+            render_sources(message.get("sources", []))
+
+question = st.chat_input("Ask something about your documents...")
 
 if question:
-    rag_chain = build_rag_chain()
+    st.session_state.messages.append({"role": "user", "content": question})
+    with st.chat_message("user"):
+        st.markdown(question)
+
+    rag_chain = build_rag_chain(retriever_top_k)
 
     with st.spinner("正在检索知识库并生成回答..."):
         result = rag_chain.invoke({"input": question})
 
-    st.subheader("回答")
-    st.markdown(result["answer"])
-
     context_docs = result.get("context", [])
+    sources = build_source_items(context_docs)
+    answer = result["answer"]
 
-    st.subheader("参考片段")
+    st.session_state.messages.append(
+        {
+            "role": "assistant",
+            "content": answer,
+            "sources": sources,
+        }
+    )
 
-    if not context_docs:
-        st.info("没有检索到参考片段。")
-    else:
-        for index, doc in enumerate(context_docs, start=1):
-            title = format_source(doc.metadata, index)
-
-            with st.expander(title):
-                st.markdown(doc.page_content)
+    with st.chat_message("assistant"):
+        st.markdown(answer)
+        render_sources(sources)

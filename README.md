@@ -1,96 +1,109 @@
-# Personal RAG
+# AI Learning Knowledge Assistant
 
-Personal RAG 是一个最小可运行的个人知识库问答系统。它会把 `data/raw` 下的文档切分成文本块，使用本地 BGE Embedding 生成向量，存入 Chroma，然后通过 DeepSeek 大模型基于检索结果回答问题。
+AI Learning Knowledge Assistant is a local personal knowledge-base RAG application built with LangChain, DeepSeek, Chroma, BGE Embedding, and Streamlit. It is designed as a small but complete GitHub and resume showcase project for AI learning notes, internship preparation, and course materials.
 
-## 技术栈
-
-- Python 3.13
-- LangChain
-- DeepSeek Chat
-- Chroma
-- HuggingFace Embeddings
-- BAAI/bge-small-zh-v1.5
-- pypdf
-- Streamlit
+The app can load local TXT, Markdown, and PDF documents, convert them into embeddings, store them in a local Chroma vector database, retrieve relevant chunks, and generate answers with DeepSeek while showing retrieved sources and reference snippets.
 
 ## Features
 
-- TXT / Markdown / PDF document ingestion
-- Local Chroma vector database
-- DeepSeek-based answers with retrieved context
-- Streamlit web interface
-- Reference source display
+- TXT / Markdown / PDF document loading
+- Local vector database with Chroma
+- BGE Embedding semantic retrieval
+- DeepSeek-based answer generation
+- Streamlit Web UI
 - Web-based document upload
 - One-click knowledge base rebuild
+- Chat history in UI
+- Clear chat history
+- Adjustable retriever top-k
+- Retrieved sources and reference snippets
 
-## 配置 .env
+## Tech Stack
 
-在项目根目录创建或编辑 `.env`：
+- Python
+- LangChain
+- langchain-classic
+- DeepSeek
+- Chroma
+- HuggingFace Embeddings
+- BAAI/bge-small-zh-v1.5
+- Streamlit
+- pypdf
+- python-dotenv
 
-```env
-DEEPSEEK_API_KEY=你的 DeepSeek API Key
-```
-
-不要把 `.env` 提交到公开仓库。
-
-## 放入资料
-
-把个人资料放到：
+## Project Structure
 
 ```text
-data/raw
+personal-rag/
+├── src/
+│   ├── ingest.py        # Load raw documents, split text, build Chroma vector DB
+│   ├── app.py           # Streamlit web UI for upload, rebuild, and RAG chat
+│   └── ask.py           # Command-line RAG question-answering entry point
+├── data/raw/            # Public sample documents and local knowledge files
+├── chroma_db/           # Local generated vector database, not committed
+├── .env                 # Local API key config, not committed
+├── requirements.txt     # Python dependencies
+└── AGENTS.md            # Project-specific Codex working rules
 ```
 
-当前支持的文件类型：
+## Setup
 
-- `.txt`
-- `.md`
-- `.pdf`
+Create and activate a virtual environment, then install dependencies:
 
-PDF 会按页读取，并保留 `source` 和 `page` metadata。TXT / MD 会直接读取文本，并保留 `source` metadata。
+```powershell
+pip install -r requirements.txt
+```
 
-## 构建知识库
+Create a local `.env` file in the project root:
 
-在项目根目录运行：
+```env
+DEEPSEEK_API_KEY=your_api_key_here
+```
+
+Do not commit `.env` to Git.
+
+## How to Use
+
+1. Put learning materials into `data/raw/`, or upload `.txt`, `.md`, or `.pdf` files in the Streamlit page.
+2. Click `Rebuild Knowledge Base` to rebuild the local Chroma vector database.
+3. Ask questions in the web chat or command-line interface.
+4. Review retrieved sources and reference snippets under each answer.
+
+## Commands
+
+Build or rebuild the knowledge base:
 
 ```powershell
 & 'C:\Users\14985\Desktop\personal-rag\.venv\Scripts\python.exe' src\ingest.py
 ```
 
-成功后会生成：
-
-```text
-chroma_db
-```
-
-## 启动命令行问答
-
-确认 `.env` 已填写 `DEEPSEEK_API_KEY` 后运行：
+Start command-line QA:
 
 ```powershell
 & 'C:\Users\14985\Desktop\personal-rag\.venv\Scripts\python.exe' src\ask.py
 ```
 
-输入 `exit`、`quit` 或 `q` 可以退出。
-
-## 启动网页
-
-确认 `.env` 已填写 `DEEPSEEK_API_KEY`，并且已经运行过 `src\ingest.py` 后执行：
+Start the Streamlit web app:
 
 ```powershell
 & 'C:\Users\14985\Desktop\personal-rag\.venv\Scripts\python.exe' -m streamlit run src\app.py
 ```
 
-## 网页端使用 V4 功能
+## Example Questions
 
-1. 打开 Streamlit 页面。
-2. 上传 `.txt`、`.md` 或 `.pdf` 文件。
-3. 点击 `Rebuild Knowledge Base`。
-4. 等待页面显示 documents/chunks 数量。
-5. 基于新上传的资料提问，并查看参考来源。
+- RAG 的核心流程是什么？
+- LangChain 在 RAG 里负责什么？
+- 我现在适合找哪些 AI 实习岗位？
+- 这个 Personal RAG 项目可以怎么写进简历？
 
-## Notes
+## Security Notes
 
-- 上传到 `data/raw/` 的个人文件默认不应提交到 Git。
-- `chroma_db` 是本地生成的向量数据库，不提交到 Git。
-- `.env` 只保存本地 API Key，不提交到 Git。
+- `.env` is not committed.
+- `chroma_db/` is not committed.
+- `.venv/` is not committed.
+- Private files uploaded to `data/raw/` should not be committed to Git by default.
+- Public sample files may be committed, but real personal documents should stay local.
+
+## Resume Description
+
+基于 LangChain、DeepSeek、Chroma、BGE Embedding 和 Streamlit 开发了一个本地个人知识库 RAG 问答系统，支持 TXT / Markdown / PDF 文档加载、网页端文件上传、一键重建知识库、可调 top-k 语义检索、聊天历史展示和回答来源追踪。项目通过 Chroma 保存本地向量库，并使用 DeepSeek 基于检索片段生成回答，可用于 AI 学习资料管理、课程笔记问答和实习准备。
