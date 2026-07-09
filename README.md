@@ -1,21 +1,38 @@
 # AI Learning Knowledge Assistant
 
-AI Learning Knowledge Assistant is a local personal knowledge-base RAG application built with LangChain, DeepSeek, Chroma, BGE Embedding, and Streamlit. It is designed as a small but complete GitHub and resume showcase project for AI learning notes, internship preparation, and course materials.
+AI Learning Knowledge Assistant is a local personal knowledge-base RAG question-answering system built with LangChain, DeepSeek, Chroma, BGE Embedding, and Streamlit. It supports uploading TXT, Markdown, and PDF documents, building a local vector knowledge base, and answering questions based on retrieved context.
 
-The app can load local TXT, Markdown, and PDF documents, convert them into embeddings, store them in a local Chroma vector database, retrieve relevant chunks, and generate answers with DeepSeek while showing retrieved sources and reference snippets.
+This project focuses on demonstrating an AI coding workflow with Codex, practical RAG application development, local knowledge-base implementation, debugging, documentation, and Git branch-based iteration.
 
-## Features
+## Highlights
 
-- TXT / Markdown / PDF document loading
-- Local vector database with Chroma
+- Local RAG knowledge base powered by LangChain
+- DeepSeek Chat Model integration
 - BGE Embedding semantic retrieval
-- DeepSeek-based answer generation
-- Streamlit Web UI
-- Web-based document upload
+- Chroma local vector database
+- TXT / Markdown / PDF document loading
+- Web-based file upload
 - One-click knowledge base rebuild
-- Chat history in UI
-- Clear chat history
+- Chat history in Streamlit UI
 - Adjustable retriever top-k
+- Retrieved source and reference snippet display
+- AI coding workflow with Codex + Git branches + PR-style iteration
+
+## Demo Status
+
+- Current version: local runnable showcase version.
+- Public online demo: not deployed yet.
+- The app can be run locally with the commands below.
+- No public demo URL is provided until an actual deployment exists.
+
+## Screenshots
+
+Screenshots can be added after local UI testing.
+
+Planned screenshot coverage:
+
+- Streamlit chat interface
+- Document upload and rebuild workflow
 - Retrieved sources and reference snippets
 
 ## Tech Stack
@@ -23,13 +40,43 @@ The app can load local TXT, Markdown, and PDF documents, convert them into embed
 - Python
 - LangChain
 - langchain-classic
-- DeepSeek
+- DeepSeek Chat
 - Chroma
 - HuggingFace Embeddings
 - BAAI/bge-small-zh-v1.5
 - Streamlit
 - pypdf
 - python-dotenv
+- Git
+
+## Architecture
+
+```mermaid
+flowchart LR
+    A[TXT / Markdown / PDF Documents] --> B[ingest.py]
+    B --> C[Text Splitting]
+    C --> D[BGE Embedding]
+    D --> E[Chroma Vector DB]
+    F[User Question] --> G[Retriever]
+    E --> G
+    G --> H[Relevant Chunks]
+    H --> I[DeepSeek Chat Model]
+    I --> J[Streamlit Answer with Sources]
+```
+
+## Features
+
+- Load local TXT, Markdown, and PDF files into a personal knowledge base
+- Split documents into retrievable chunks
+- Generate semantic embeddings with `BAAI/bge-small-zh-v1.5`
+- Store vectors locally with Chroma
+- Ask questions through a Streamlit web interface
+- Upload documents from the web UI
+- Rebuild the knowledge base with one click
+- Keep chat history in the current Streamlit session
+- Clear chat history from the sidebar
+- Tune retriever `top-k` from the sidebar
+- Display retrieved source names, page metadata, and reference snippets
 
 ## Project Structure
 
@@ -96,14 +143,25 @@ Start the Streamlit web app:
 - 我现在适合找哪些 AI 实习岗位？
 - 这个 Personal RAG 项目可以怎么写进简历？
 
+## Git / Codex Workflow
+
+This repository is also used to demonstrate an AI coding workflow:
+
+- Use Codex to plan, implement, verify, and document changes
+- Keep feature work on separate Git branches
+- Run verification before committing
+- Protect local secrets and generated artifacts from Git
+- Keep README and project documentation aligned with the current implementation
+
 ## Security Notes
 
 - `.env` is not committed.
 - `chroma_db/` is not committed.
 - `.venv/` is not committed.
+- `__pycache__/` and `*.pyc` are not committed.
 - Private files uploaded to `data/raw/` should not be committed to Git by default.
 - Public sample files may be committed, but real personal documents should stay local.
 
 ## Resume Description
 
-基于 LangChain、DeepSeek、Chroma、BGE Embedding 和 Streamlit 开发了一个本地个人知识库 RAG 问答系统，支持 TXT / Markdown / PDF 文档加载、网页端文件上传、一键重建知识库、可调 top-k 语义检索、聊天历史展示和回答来源追踪。项目通过 Chroma 保存本地向量库，并使用 DeepSeek 基于检索片段生成回答，可用于 AI 学习资料管理、课程笔记问答和实习准备。
+基于 LangChain、DeepSeek、Chroma、BGE Embedding 和 Streamlit 开发了一个本地个人知识库 RAG 问答系统，支持 TXT / Markdown / PDF 文档加载、网页端文件上传、一键重建知识库、可调 top-k 语义检索、聊天历史展示和回答来源追踪。项目通过 Chroma 保存本地向量库，并使用 DeepSeek 基于检索片段生成回答，可用于 AI 学习资料管理、课程笔记问答和实习准备，同时展示了使用 Codex 进行 AI coding、调试、文档整理和 Git 分支迭代的完整开发流程。
