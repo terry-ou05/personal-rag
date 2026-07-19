@@ -37,6 +37,7 @@ The project helps answer IT troubleshooting questions from local runbooks instea
 - Filter retrieval by metadata fields
 - Display retrieved sources and reference snippets
 - Run a retrieval-only evaluation baseline with Recall@K, MRR, zero-hit rate, and latency
+- Compare Dense, BM25, and Hybrid RRF retrieval modes
 
 ## Tech Stack
 
@@ -48,6 +49,8 @@ The project helps answer IT troubleshooting questions from local runbooks instea
 - Chroma
 - HuggingFace Embeddings
 - BAAI/bge-small-zh-v1.5
+- rank-bm25
+- jieba
 - Streamlit
 - pypdf
 - python-dotenv
@@ -55,9 +58,9 @@ The project helps answer IT troubleshooting questions from local runbooks instea
 
 ## Current Version
 
-The current version is a local runnable IT ops showcase version. It includes the full basic RAG workflow, public IT troubleshooting sample documents, metadata ingestion, a Streamlit UI, web-based document upload, one-click knowledge-base rebuild, chat history, adjustable top-k retrieval, metadata filters, source/reference snippet display, and a retrieval evaluation baseline.
+The current version is a local runnable IT ops showcase version. It includes the full basic RAG workflow, public IT troubleshooting sample documents, metadata ingestion, a Streamlit UI, web-based document upload, one-click knowledge-base rebuild, chat history, adjustable top-k retrieval, metadata filters, source/reference snippet display, a retrieval evaluation baseline, and optional Hybrid Retrieval.
 
-It is intended for GitHub and resume presentation. It does not include public deployment, real enterprise documents, multi-user accounts, cloud storage, OCR, complex agent workflows, reranking, or production monitoring.
+It is intended for GitHub and resume presentation. It does not include public deployment, real enterprise documents, multi-user accounts, cloud storage, OCR, complex agent workflows, reranking, Qdrant, or production monitoring.
 
 ## V7 Retrieval Baseline
 
@@ -78,6 +81,20 @@ Current baseline:
 
 This gives the project a measurable starting point before adding Hybrid Retrieval, BM25, RRF, reranking, or query rewrite.
 
+## V8 Hybrid Retrieval Result
+
+V8 adds BM25 sparse retrieval and Reciprocal Rank Fusion while keeping the V7 dense retriever available. BM25 is useful for exact tokens such as commands, error codes, file names, configuration keys, and service names. Dense retrieval is still better for short symptom descriptions.
+
+The V8 evaluation compares three modes on the same 30 questions:
+
+| Mode | Recall@1 | Recall@3 | Recall@5 | MRR | Zero-hit |
+|---|---:|---:|---:|---:|---:|
+| Dense | 86.67% | 100.00% | 100.00% | 0.9278 | 0.00% |
+| BM25 | 53.33% | 70.00% | 70.00% | 0.6167 | 30.00% |
+| Hybrid RRF | 86.67% | 96.67% | 100.00% | 0.9122 | 0.00% |
+
+Hybrid improved `disk-002` from rank 2 to rank 1 because the query contains `df -h` and `90%`. It also introduced one Top-1 regression on `login-003`, and its MRR is lower than Dense. Based on this small dataset, the app keeps Dense as the default and exposes Hybrid RRF as an optional mode.
+
 ## Future Extensions
 
 Possible next steps include:
@@ -88,5 +105,6 @@ Possible next steps include:
 - Add lightweight unit tests for document loading and source formatting
 - Add hybrid retrieval with BM25 + vector search
 - Add retrieval trace for interview-friendly explanation
+- Try a reranker after using V8 metrics as a control group
 - Add query rewrite for vague IT operations questions
 - Add a safer upload overwrite confirmation flow

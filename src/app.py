@@ -10,10 +10,16 @@ from langchain_chroma import Chroma
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_deepseek import ChatDeepSeek
 from langchain_huggingface.embeddings import HuggingFaceEmbeddings
-from langchain_classic.chains import create_retrieval_chain
 from langchain_classic.chains.combine_documents import create_stuff_documents_chain
 
-from ingest import build_knowledge_base
+try:
+    from ingest import build_knowledge_base, load_documents
+    from retrieval.common import split_documents_with_chunk_ids
+    from retrieval.hybrid_retriever import HybridRetriever
+except ModuleNotFoundError:
+    from src.ingest import build_knowledge_base, load_documents
+    from src.retrieval.common import split_documents_with_chunk_ids
+    from src.retrieval.hybrid_retriever import HybridRetriever
 
 
 load_dotenv()
@@ -27,6 +33,7 @@ EMBEDDING_MODEL = "BAAI/bge-small-zh-v1.5"
 LLM_MODEL = "deepseek-chat"
 COLLECTION_NAME = "personal_knowledge"
 RETRIEVER_TOP_K = 4
+DEFAULT_RETRIEVAL_MODE = "Dense"
 SUPPORTED_UPLOAD_SUFFIXES = {".txt", ".md", ".pdf"}
 FILTER_FIELDS = ["category", "system", "severity", "doc_type"]
 
@@ -61,6 +68,7 @@ def build_source_items(docs) -> list[dict]:
             {
                 "title": format_source(doc.metadata, index),
                 "content": doc.page_content,
+                "metadata": doc.metadata,
             }
         )
     return source_items
@@ -74,6 +82,15 @@ def render_sources(sources: list[dict]) -> None:
     for source in sources:
         with st.expander(source["title"]):
             st.markdown(source["content"])
+            rank_fields = {
+                key: source.get("metadata", {}).get(key)
+                for key in ["dense_rank", "bm25_rank", "fused_rank", "fused_score"]
+                if source.get("metadata", {}).get(key) is not None
+            }
+            if rank_fields:
+                st.caption(
+                    " · ".join(f"{key}: {value}" for key, value in rank_fields.items())
+                )
 
 
 def get_raw_documents() -> list[Path]:
@@ -174,10 +191,10 @@ def save_uploaded_documents(uploaded_files) -> list[str]:
 
 
 @st.cache_resource
-def build_rag_chain(top_k: int, filter_items: tuple[tuple[str, str], ...]):
-    """构建 RAG 问答链。"""
+def build_retrieval_backend():
     embeddings = HuggingFaceEmbeddings(
-        model_name=EMBEDDING_MODEL
+        model_name=EMBEDDING_MODEL,
+        encode_kwargs={"normalize_embeddings": True},
     )
 
     vectorstore = Chroma(
@@ -185,16 +202,64 @@ def build_rag_chain(top_k: int, filter_items: tuple[tuple[str, str], ...]):
         embedding_function=embeddings,
         persist_directory=str(DB_DIR),
     )
-
-    search_kwargs = {"k": top_k}
-    if filter_items:
-        filters = [{field: value} for field, value in filter_items]
-        search_kwargs["filter"] = filters[0] if len(filters) == 1 else {"$and": filters}
-
-    retriever = vectorstore.as_retriever(
-        search_kwargs=search_kwargs
+    bm25_documents = split_documents_with_chunk_ids(load_documents())
+    return HybridRetriever(
+        vectorstore=vectorstore,
+        bm25_documents=bm25_documents,
     )
 
+
+class RetrievalQAChain:
+    def __init__(
+        self,
+        *,
+        retriever: HybridRetriever,
+        retrieval_mode: str,
+        top_k: int,
+        metadata_filter: dict | None,
+        question_answer_chain,
+    ) -> None:
+        self.retriever = retriever
+        self.retrieval_mode = retrieval_mode
+        self.top_k = top_k
+        self.metadata_filter = metadata_filter
+        self.question_answer_chain = question_answer_chain
+
+    def invoke(self, payload: dict) -> dict:
+        question = payload["input"]
+        mode = "hybrid" if self.retrieval_mode == "Hybrid RRF" else "dense"
+        retrieval_results = self.retriever.retrieve(
+            question,
+            mode=mode,
+            top_k=self.top_k,
+            metadata_filter=self.metadata_filter,
+        )
+        context_docs = [result.to_document() for result in retrieval_results]
+        answer = self.question_answer_chain.invoke(
+            {
+                "input": question,
+                "context": context_docs,
+            }
+        )
+        return {
+            "answer": answer,
+            "context": context_docs,
+        }
+
+
+@st.cache_resource
+def build_rag_chain(
+    retrieval_mode: str,
+    top_k: int,
+    filter_items: tuple[tuple[str, str], ...],
+):
+    """构建 RAG 问答链。"""
+    metadata_filter = None
+    if filter_items:
+        filters = [{field: value} for field, value in filter_items]
+        metadata_filter = filters[0] if len(filters) == 1 else {"$and": filters}
+
+    retriever = build_retrieval_backend()
     llm = ChatDeepSeek(
         model=LLM_MODEL,
         temperature=0,
@@ -230,12 +295,13 @@ def build_rag_chain(top_k: int, filter_items: tuple[tuple[str, str], ...]):
         prompt=prompt,
     )
 
-    rag_chain = create_retrieval_chain(
+    return RetrievalQAChain(
         retriever=retriever,
-        combine_docs_chain=question_answer_chain,
+        retrieval_mode=retrieval_mode,
+        top_k=top_k,
+        metadata_filter=metadata_filter,
+        question_answer_chain=question_answer_chain,
     )
-
-    return rag_chain
 
 
 st.set_page_config(
@@ -272,12 +338,18 @@ with st.sidebar:
     st.markdown(f"**LLM:** {LLM_MODEL}")
     st.markdown(f"**Embedding:** {EMBEDDING_MODEL}")
     st.markdown("**Vector DB:** Chroma")
+    retrieval_mode = st.radio(
+        "Retrieval Mode",
+        options=["Dense", "Hybrid RRF"],
+        index=0 if DEFAULT_RETRIEVAL_MODE == "Dense" else 1,
+    )
     retriever_top_k = st.slider(
         "Retriever top-k",
         min_value=1,
         max_value=8,
         value=RETRIEVER_TOP_K,
     )
+    st.markdown(f"**Mode:** {retrieval_mode}")
     st.markdown(f"**Retriever top-k:** {retriever_top_k}")
     st.markdown(f"**Knowledge base path:** `{DB_DIR.name}`")
 
@@ -364,7 +436,11 @@ if question:
     with st.chat_message("user"):
         st.markdown(question)
 
-    rag_chain = build_rag_chain(retriever_top_k, filter_to_items(metadata_filter))
+    rag_chain = build_rag_chain(
+        retrieval_mode,
+        retriever_top_k,
+        filter_to_items(metadata_filter),
+    )
 
     with st.spinner("正在检索知识库并生成回答..."):
         result = rag_chain.invoke({"input": question})

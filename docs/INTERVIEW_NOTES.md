@@ -4,7 +4,7 @@
 
 IT Ops Knowledge Base RAG Assistant is a local RAG question-answering system I built for simulated IT operations troubleshooting documents. It uses LangChain, DeepSeek, Chroma, BGE Embedding, and Streamlit. The app can load TXT, Markdown, and PDF files, attach metadata, build a local vector knowledge base, and answer questions based on retrieved document chunks.
 
-The project also supports web-based document upload, one-click knowledge-base rebuild, metadata filtering, chat history, adjustable top-k retrieval, source/reference snippet display, and retrieval baseline evaluation. I used Codex to help with coding, debugging, documentation, verification commands, and Git branch-based iteration.
+The project also supports web-based document upload, one-click knowledge-base rebuild, metadata filtering, chat history, adjustable top-k retrieval, source/reference snippet display, retrieval baseline evaluation, and an optional Hybrid Retrieval mode. I used Codex to help with coding, debugging, documentation, verification commands, and Git branch-based iteration.
 
 ## 3-Minute Project Introduction
 
@@ -15,6 +15,8 @@ The backend workflow is handled mainly by `src/ingest.py`. It reads files from `
 The web interface is built with Streamlit in `src/app.py`. It lets users upload documents, rebuild the knowledge base, select metadata filters, ask questions, keep chat history, adjust retriever top-k, and inspect sources and reference snippets. There is also a command-line entry point in `src/ask.py`.
 
 In V7, I added a retrieval evaluation baseline. It uses 30 manually checked questions from the public IT ops documents and measures Recall@1, Recall@3, Recall@5, MRR, zero-hit rate, and retrieval latency. The current dense Chroma retriever reaches Recall@1 86.67%, Recall@3 100%, Recall@5 100%, and MRR 0.9278.
+
+In V8, I added BM25 sparse retrieval and Reciprocal Rank Fusion. The result was not blindly positive: Hybrid kept Recall@1 at 86.67% but reduced MRR to 0.9122 and introduced one Top-1 regression, so I kept Dense as the default and exposed Hybrid as an optional mode.
 
 For development, I used Codex as an AI coding assistant. I asked it to inspect the codebase, make scoped changes, run verification commands, improve documentation, and manage Git branches. This helped me practice a more structured AI coding workflow rather than only writing small isolated scripts.
 
@@ -52,6 +54,22 @@ Recall@K checks whether the expected source document appears within the top K re
 
 A baseline gives a measurable comparison point. Before adding BM25, RRF, reranking, or query rewrite, I want to know how well the existing Chroma dense retriever performs. Then V8 improvements can be compared with real numbers.
 
+### What is the difference between Dense retrieval and BM25?
+
+Dense retrieval uses embeddings to match semantic meaning. BM25 is keyword-based retrieval, so it is useful for exact commands, error codes, service names, file names, and configuration keys. In this project, BM25 helped a `df -h` disk-space question, but it was weaker on short Chinese symptom queries.
+
+### Why not add Dense score and BM25 score directly?
+
+The scores come from different systems and do not share the same scale. V8 uses Reciprocal Rank Fusion instead, which combines rankings rather than raw scores.
+
+### What is RRF?
+
+RRF stands for Reciprocal Rank Fusion. It gives each retrieved chunk a score based on its rank in each retriever. A chunk that appears high in both Dense and BM25 results gets a stronger fused score.
+
+### Did Hybrid Retrieval improve the project?
+
+It improved one known Dense weakness, `disk-002`, by moving the expected disk document from rank 2 to rank 1. But it also caused one Top-1 regression and lowered MRR. So the honest conclusion is to keep Dense as the default and leave Hybrid as an optional experiment.
+
 ### What is metadata filtering?
 
 Metadata filtering narrows retrieval by fields such as category, system, severity, and document type. In this project, it makes the search closer to an enterprise knowledge-base workflow where documents are organized by operational context.
@@ -70,11 +88,11 @@ I defined the project goal, selected the feature direction, reviewed each change
 
 ### What are the project's limitations?
 
-It is still a local showcase project. It does not include public deployment, user accounts, cloud storage, OCR, BM25 hybrid retrieval, reranking, automated tests, or production monitoring. Uploaded private files also need to be handled carefully and should not be committed to Git.
+It is still a local showcase project. It does not include public deployment, user accounts, cloud storage, OCR, reranking, Qdrant, automated CI, or production monitoring. Uploaded private files also need to be handled carefully and should not be committed to Git.
 
 ### If you continue improving it, what would you do next?
 
-I would use the V7 baseline as the control group, then add Hybrid Retrieval with BM25 plus vector search in V8 and compare Recall@K, MRR, zero-hit rate, and latency against the current dense retriever.
+I would use the V8 report as the control group, then try a reranker on top of the Dense and Hybrid candidates. I would only keep it if it improves Recall@1 or MRR without unacceptable latency or regressions.
 
 ### Why did you choose Streamlit?
 

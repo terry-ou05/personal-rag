@@ -16,7 +16,7 @@ data/raw + data/metadata.json
 -> text chunks
 -> BGE Embedding
 -> Chroma with metadata
--> retriever with optional metadata filters
+-> Dense retriever or Hybrid RRF retriever with optional metadata filters
 -> DeepSeek
 -> Streamlit answer with sources
 ```
@@ -44,6 +44,14 @@ data/raw + data/metadata.json
 
    Chunking makes retrieval more precise because the system can search smaller pieces of text.
 
+   V8 also adds a stable `chunk_id` to each chunk. The format is:
+
+   ```text
+   normalized_source::page::chunk_index
+   ```
+
+   This lets Dense retrieval, BM25 retrieval, RRF fusion, and evaluation reports refer to the same chunk.
+
 5. BGE Embedding
 
    The project uses `BAAI/bge-small-zh-v1.5` through HuggingFace Embeddings. Embedding converts text chunks into vectors so that semantic similarity can be calculated.
@@ -54,7 +62,7 @@ data/raw + data/metadata.json
 
 7. Retriever
 
-   The retriever searches Chroma for chunks that are semantically close to the user's question. In V6, optional metadata filters can limit retrieval by category, system, severity, or document type.
+   Dense mode searches Chroma for chunks that are semantically close to the user's question. Hybrid mode runs Dense retrieval and BM25 retrieval, then combines candidates with Reciprocal Rank Fusion. Optional metadata filters limit both retrieval paths by category, system, severity, or document type.
 
 8. DeepSeek Chat Model
 
@@ -129,6 +137,30 @@ Current V7 result:
 - P95 Retrieval Latency: 10.35 ms
 
 This baseline matters because V8 can compare Hybrid Retrieval against the current dense retriever instead of relying on subjective impressions.
+
+## Dense, BM25, and RRF
+
+Dense retrieval uses embeddings, so it works well when the query is semantically similar to a document even if the wording is different. BM25 is sparse lexical retrieval, so it works well when the query contains exact technical terms such as `502`, `df -h`, `error.log`, `max_connections`, `redis-server`, `OOM`, or `/var/log`.
+
+Dense score and BM25 score use different scales, so V8 does not add them directly. Instead, it uses Reciprocal Rank Fusion:
+
+```text
+RRF(d) = sum(1 / (rrf_k + rank(d)))
+```
+
+This means a chunk receives credit based on its rank in each retriever. If the same chunk appears in both Dense and BM25 results, the RRF scores are accumulated.
+
+## V8 Evaluation Result
+
+V8 evaluates Dense, BM25, and Hybrid RRF on the same 30 questions without calling DeepSeek.
+
+| Mode | Recall@1 | Recall@3 | Recall@5 | MRR | Zero-hit |
+|---|---:|---:|---:|---:|---:|
+| Dense | 86.67% | 100.00% | 100.00% | 0.9278 | 0.00% |
+| BM25 | 53.33% | 70.00% | 70.00% | 0.6167 | 30.00% |
+| Hybrid RRF | 86.67% | 96.67% | 100.00% | 0.9122 | 0.00% |
+
+The result is honest rather than forced: Hybrid helped `disk-002`, but did not improve the overall metric set and introduced one Top-1 regression. The current recommendation is to keep Dense as the default and leave Hybrid RRF available for testing.
 
 ## How to Explain This in an Interview
 
