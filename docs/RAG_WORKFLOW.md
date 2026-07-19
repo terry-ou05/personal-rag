@@ -1,22 +1,22 @@
 # RAG Workflow
 
-This note explains how Retrieval-Augmented Generation works in this project and is intended as a quick interview review document.
+This note explains how Retrieval-Augmented Generation works in this IT operations showcase project and is intended as a quick interview review document.
 
 ## What RAG Means
 
 RAG stands for Retrieval-Augmented Generation. The main idea is to retrieve relevant information from a knowledge base first, then let a language model generate an answer based on that retrieved context.
 
-In this project, RAG helps the assistant answer questions from local learning documents instead of only relying on the model's general knowledge.
+In this project, RAG helps the assistant answer IT operations troubleshooting questions from local runbooks instead of only relying on the model's general knowledge.
 
 ## Workflow in This Project
 
 ```text
-data/raw
+data/raw + data/metadata.json
 -> src/ingest.py
 -> text chunks
 -> BGE Embedding
--> Chroma
--> retriever
+-> Chroma with metadata
+-> retriever with optional metadata filters
 -> DeepSeek
 -> Streamlit answer with sources
 ```
@@ -25,13 +25,17 @@ data/raw
 
 1. `data/raw/`
 
-   This folder contains local knowledge files. The project supports `.txt`, `.md`, and `.pdf` files. Public sample files can be committed, but private uploaded files should stay local.
+   This folder contains local knowledge files. The V6 showcase includes public IT operations runbooks. The project supports `.txt`, `.md`, and `.pdf` files. Public sample files can be committed, but private uploaded files should stay local.
 
-2. `src/ingest.py`
+2. `data/metadata.json`
+
+   This file stores sample metadata for public IT operations documents, including category, system, document type, severity, and tags. This metadata is attached to documents before they are written into Chroma.
+
+3. `src/ingest.py`
 
    This script reads supported files from `data/raw/`. TXT and Markdown files are read as text. PDF files are read page by page with `pypdf`, and page metadata is preserved.
 
-3. Text chunks
+4. Text chunks
 
    Long documents are split into smaller chunks using `RecursiveCharacterTextSplitter`. In the current project, the chunk settings are:
 
@@ -40,25 +44,25 @@ data/raw
 
    Chunking makes retrieval more precise because the system can search smaller pieces of text.
 
-4. BGE Embedding
+5. BGE Embedding
 
    The project uses `BAAI/bge-small-zh-v1.5` through HuggingFace Embeddings. Embedding converts text chunks into vectors so that semantic similarity can be calculated.
 
-5. Chroma vector database
+6. Chroma vector database
 
-   Chroma stores the generated vectors locally in `chroma_db/`. This folder is generated locally and should not be committed to Git.
+   Chroma stores the generated vectors and metadata locally in `chroma_db/`. This folder is generated locally and should not be committed to Git.
 
-6. Retriever
+7. Retriever
 
-   The retriever searches Chroma for chunks that are semantically close to the user's question. These retrieved chunks become the context for the model.
+   The retriever searches Chroma for chunks that are semantically close to the user's question. In V6, optional metadata filters can limit retrieval by category, system, severity, or document type.
 
-7. DeepSeek Chat Model
+8. DeepSeek Chat Model
 
    DeepSeek receives the user question and retrieved context, then generates an answer. The prompt asks the model to answer based on the retrieved materials and avoid inventing unsupported information.
 
-8. Streamlit UI
+9. Streamlit UI
 
-   `src/app.py` provides the web interface. Users can upload documents, rebuild the knowledge base, ask questions, view chat history, adjust top-k, and inspect retrieved sources.
+   `src/app.py` provides the web interface. Users can upload documents, rebuild the knowledge base, ask questions, view chat history, adjust top-k, apply metadata filters, and inspect retrieved sources.
 
 ## What top-k Means
 
@@ -71,6 +75,15 @@ For example:
 - `top-k=8` returns more context, but may include less focused information
 
 In this project, top-k is adjustable in the Streamlit sidebar. This is useful for testing how retrieval breadth affects answer quality.
+
+## What Metadata Filtering Means
+
+Metadata filtering narrows the search space before retrieval. For example, if the user selects:
+
+- `system = nginx`
+- `severity = high`
+
+the retriever searches only chunks whose metadata matches those fields. This makes the project closer to an enterprise knowledge-base scenario where documents are usually organized by system, category, severity, and document type.
 
 ## Why Show Sources and Reference Snippets
 
@@ -86,4 +99,4 @@ For interviews, this is important because it shows that the project is not just 
 
 A short explanation:
 
-> I built a local RAG assistant that reads documents from `data/raw`, splits them into chunks, converts chunks into BGE embeddings, stores them in Chroma, retrieves relevant chunks for each question, and uses DeepSeek to generate answers in a Streamlit UI. I also display sources and snippets so the answer can be checked against the original documents.
+> I built a local IT operations RAG assistant that reads troubleshooting runbooks from `data/raw`, attaches metadata from `data/metadata.json`, splits documents into chunks, converts chunks into BGE embeddings, stores them in Chroma, retrieves relevant chunks with optional metadata filters, and uses DeepSeek to generate answers in a Streamlit UI. I also display sources and snippets so the answer can be checked against the original documents.

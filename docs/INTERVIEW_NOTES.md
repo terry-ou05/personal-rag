@@ -2,17 +2,17 @@
 
 ## 1-Minute Project Introduction
 
-AI Learning Knowledge Assistant is a local RAG question-answering system I built for AI learning notes and internship preparation. It uses LangChain, DeepSeek, Chroma, BGE Embedding, and Streamlit. The app can load TXT, Markdown, and PDF files, build a local vector knowledge base, and answer questions based on retrieved document chunks.
+IT Ops Knowledge Base RAG Assistant is a local RAG question-answering system I built for simulated IT operations troubleshooting documents. It uses LangChain, DeepSeek, Chroma, BGE Embedding, and Streamlit. The app can load TXT, Markdown, and PDF files, attach metadata, build a local vector knowledge base, and answer questions based on retrieved document chunks.
 
-The project also supports web-based document upload, one-click knowledge-base rebuild, chat history, adjustable top-k retrieval, and source/reference snippet display. I used Codex to help with coding, debugging, documentation, verification commands, and Git branch-based iteration.
+The project also supports web-based document upload, one-click knowledge-base rebuild, metadata filtering, chat history, adjustable top-k retrieval, and source/reference snippet display. I used Codex to help with coding, debugging, documentation, verification commands, and Git branch-based iteration.
 
 ## 3-Minute Project Introduction
 
-This project is a local personal knowledge-base RAG assistant. The goal is to make my AI learning materials easier to search and review. Instead of asking a model from memory, the system retrieves relevant chunks from my local documents and then asks DeepSeek to answer based on that retrieved context.
+This project is a local IT operations knowledge-base RAG assistant. The goal is to simulate an enterprise service desk knowledge-base scenario with public sample troubleshooting documents. Instead of asking a model from memory, the system retrieves relevant chunks from local runbooks and then asks DeepSeek to answer based on that retrieved context.
 
-The backend workflow is handled mainly by `src/ingest.py`. It reads files from `data/raw/`, supports TXT, Markdown, and PDF, splits text into chunks, generates embeddings using `BAAI/bge-small-zh-v1.5`, and stores vectors in a local Chroma database.
+The backend workflow is handled mainly by `src/ingest.py`. It reads files from `data/raw/`, supports TXT, Markdown, and PDF, merges metadata from `data/metadata.json`, splits text into chunks, generates embeddings using `BAAI/bge-small-zh-v1.5`, and stores vectors plus metadata in a local Chroma database.
 
-The web interface is built with Streamlit in `src/app.py`. It lets users upload documents, rebuild the knowledge base, ask questions, keep chat history, adjust retriever top-k, and inspect sources and reference snippets. There is also a command-line entry point in `src/ask.py`.
+The web interface is built with Streamlit in `src/app.py`. It lets users upload documents, rebuild the knowledge base, select metadata filters, ask questions, keep chat history, adjust retriever top-k, and inspect sources and reference snippets. There is also a command-line entry point in `src/ask.py`.
 
 For development, I used Codex as an AI coding assistant. I asked it to inspect the codebase, make scoped changes, run verification commands, improve documentation, and manage Git branches. This helped me practice a more structured AI coding workflow rather than only writing small isolated scripts.
 
@@ -20,7 +20,7 @@ For development, I used Codex as an AI coding assistant. I asked it to inspect t
 
 ### What problem does this project solve?
 
-It helps organize and query local AI learning documents. Instead of manually searching notes, I can ask questions and get answers grounded in my own materials, with sources shown for verification.
+It helps simulate an IT service desk knowledge-base search workflow. Instead of manually searching troubleshooting runbooks, the user can ask questions and get answers grounded in local documents, with sources shown for verification.
 
 ### Why use RAG?
 
@@ -42,6 +42,10 @@ Embedding converts text into numerical vectors. Text with similar meaning should
 
 Top-k is the number of retrieved chunks returned by the retriever. A smaller top-k gives more focused context, while a larger top-k provides more information but may include less relevant chunks.
 
+### What is metadata filtering?
+
+Metadata filtering narrows retrieval by fields such as category, system, severity, and document type. In this project, it makes the search closer to an enterprise knowledge-base workflow where documents are organized by operational context.
+
 ### Why show sources and reference snippets?
 
 Sources and snippets help verify the answer. They show which file and text chunk supported the response, which reduces the risk of blindly trusting generated text.
@@ -56,11 +60,11 @@ I defined the project goal, selected the feature direction, reviewed each change
 
 ### What are the project's limitations?
 
-It is still a local showcase project. It does not include public deployment, user accounts, cloud storage, OCR, automated tests, or production monitoring. Uploaded private files also need to be handled carefully and should not be committed to Git.
+It is still a local showcase project. It does not include public deployment, user accounts, cloud storage, OCR, BM25 hybrid retrieval, reranking, automated tests, or production monitoring. Uploaded private files also need to be handled carefully and should not be committed to Git.
 
 ### If you continue improving it, what would you do next?
 
-I would add a small reproducible demo document set, add screenshots, improve error handling, write lightweight tests for document loading and source formatting, and later plan deployment carefully without exposing API keys or local vector data.
+I would add screenshots, improve error handling, write lightweight tests for document loading and source formatting, add retrieval trace, and then consider hybrid retrieval with BM25 plus vector search.
 
 ### Why did you choose Streamlit?
 
