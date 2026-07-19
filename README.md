@@ -18,6 +18,8 @@ This project focuses on demonstrating an AI coding workflow with Codex, practica
 - Adjustable retriever top-k
 - Retrieved source and reference snippet display
 - Retrieval evaluation baseline with Recall@K and MRR
+- Optional Hybrid Retrieval with BM25 + Reciprocal Rank Fusion
+- Dense / BM25 / Hybrid retrieval comparison report
 - AI coding workflow with Codex + Git branches + PR-style iteration
 
 ## Demo Status
@@ -46,6 +48,8 @@ Planned screenshot coverage:
 - Chroma
 - HuggingFace Embeddings
 - BAAI/bge-small-zh-v1.5
+- BM25
+- Reciprocal Rank Fusion
 - Streamlit
 - pypdf
 - python-dotenv
@@ -60,9 +64,15 @@ flowchart LR
     B --> C[Text Splitting]
     C --> D[BGE Embedding]
     D --> E[Chroma Vector DB with Metadata]
-    F[User IT Ops Question] --> G[Retriever + Metadata Filter]
+    C --> S[BM25 Sparse Index]
+    F[User IT Ops Question] --> G[Dense Retriever + Metadata Filter]
+    F --> K[BM25 Retriever + Metadata Filter]
     E --> G
-    G --> H[Relevant Troubleshooting Chunks]
+    S --> K
+    G --> R[RRF Fusion for Hybrid Mode]
+    K --> R
+    R --> H[Relevant Troubleshooting Chunks]
+    G --> H
     H --> I[DeepSeek Chat Model]
     I --> J[Streamlit Answer with Sources]
 ```
@@ -81,8 +91,9 @@ flowchart LR
 - Clear chat history from the sidebar
 - Tune retriever `top-k` from the sidebar
 - Filter retrieval by IT ops metadata fields
+- Choose Dense or optional Hybrid RRF retrieval in the Streamlit sidebar
 - Display retrieved source names, metadata, page information, and reference snippets
-- Evaluate dense retrieval quality with a repeatable question set
+- Evaluate Dense, BM25, and Hybrid retrieval quality with a repeatable question set
 
 ## Project Structure
 
@@ -91,7 +102,10 @@ personal-rag/
 ├── src/
 │   ├── ingest.py        # Load raw documents, split text, build Chroma vector DB
 │   ├── app.py           # Streamlit web UI for upload, rebuild, and RAG chat
-│   └── ask.py           # Command-line RAG question-answering entry point
+│   ├── ask.py           # Command-line RAG question-answering entry point
+│   ├── evaluate_retrieval.py          # V7 dense retrieval baseline
+│   ├── evaluate_hybrid_retrieval.py   # V8 Dense / BM25 / Hybrid evaluation
+│   └── retrieval/       # Chunk IDs, tokenizer, BM25, RRF, and hybrid retriever
 ├── data/raw/            # Public IT ops sample documents and local knowledge files
 ├── data/metadata.json   # Metadata for public IT ops sample documents
 ├── eval/
@@ -159,6 +173,12 @@ Run the V7 retrieval evaluation baseline:
 & 'C:\Users\14985\Desktop\personal-rag\.venv\Scripts\python.exe' src\evaluate_retrieval.py
 ```
 
+Run the V8 Dense / BM25 / Hybrid retrieval comparison:
+
+```powershell
+& 'C:\Users\14985\Desktop\personal-rag\.venv\Scripts\python.exe' src\evaluate_hybrid_retrieval.py
+```
+
 Run tests:
 
 ```powershell
@@ -189,6 +209,36 @@ Generated reports:
 
 This baseline is intended to make future retrieval improvements measurable. V8 can compare Hybrid Retrieval against these numbers instead of relying only on subjective answer quality.
 
+## V8 Hybrid Retrieval
+
+V8 adds optional Hybrid Retrieval while keeping Dense retrieval as the conservative default. The implementation adds a local BM25 sparse retriever, a tokenizer for mixed Chinese and IT technical tokens, stable `chunk_id` metadata, and Reciprocal Rank Fusion (RRF).
+
+Dense retrieval is good at semantic similarity. BM25 is better at exact lexical signals such as `df -h`, `502`, `error.log`, `max_connections`, service names, commands, and error codes. Dense scores and BM25 scores are not directly comparable, so V8 uses RRF instead of adding raw scores together.
+
+Current V8 result:
+
+| Mode | Recall@1 | Recall@3 | Recall@5 | MRR | Zero-hit |
+|---|---:|---:|---:|---:|---:|
+| Dense | 86.67% | 100.00% | 100.00% | 0.9278 | 0.00% |
+| BM25 | 53.33% | 70.00% | 70.00% | 0.6167 | 30.00% |
+| Hybrid RRF | 86.67% | 96.67% | 100.00% | 0.9122 | 0.00% |
+
+Compared with Dense, Hybrid RRF had the same Recall@1, lower Recall@3, the same Recall@5, lower MRR, and one Top-1 regression. The recommendation is therefore to keep Dense as the default and expose Hybrid RRF as an optional mode for inspection.
+
+V7 non-Top-1 query changes:
+
+- `disk-002`: Dense rank 2 -> Hybrid rank 1. BM25 helped because the query contains `df -h` and `90%`.
+- `disk-003`: Dense rank 3 -> Hybrid rank 5. The query is symptom-based and BM25 did not find the expected source.
+- `nginx-005`: Dense rank 2 -> Hybrid rank 3. The query is indirect and lacks explicit `Nginx` or `502`.
+- `login-005`: Dense rank 2 -> Hybrid rank 2. BM25 did not improve this short Chinese symptom query.
+
+Generated V8 reports:
+
+- `eval/reports/v8_hybrid_report.md`
+- `eval/reports/v8_hybrid_report.json`
+
+V8 does not add Qdrant, reranking, query rewrite, LangGraph, or an agent workflow. Those are possible later steps only if the retrieval evaluation shows a clear need.
+
 ## Example Questions
 
 - 服务器 CPU 使用率过高应该怎么排查？
@@ -218,4 +268,4 @@ This repository is also used to demonstrate an AI coding workflow:
 
 ## Resume Description
 
-基于 LangChain、DeepSeek、Chroma、BGE Embedding 和 Streamlit 开发了一个面向 IT 运维知识库的本地 RAG 问答原型，支持 TXT / Markdown / PDF 运维文档加载、网页端文件上传、一键重建知识库、metadata 过滤、可调 top-k 语义检索、聊天历史展示和回答来源追踪。项目通过 Chroma 保存本地向量库，并使用 DeepSeek 基于检索片段生成排障回答，同时建立了 Recall@K、MRR、Zero-hit Rate 和检索延迟评测基线，可用于模拟企业 IT 服务台知识库问答场景并量化后续检索优化效果。
+基于 LangChain、DeepSeek、Chroma、BGE Embedding、BM25、RRF 和 Streamlit 开发了一个面向 IT 运维知识库的本地 RAG 问答原型，支持 TXT / Markdown / PDF 运维文档加载、网页端文件上传、一键重建知识库、metadata 过滤、Dense/Hybrid 检索模式切换、可调 top-k、聊天历史展示和回答来源追踪。项目通过 Chroma 保存本地向量库，并用 BM25 + RRF 做 Hybrid Retrieval 实验，同时建立 Recall@K、MRR、Zero-hit Rate 和检索延迟评测报告，用真实指标判断是否默认启用 Hybrid。

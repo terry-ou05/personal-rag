@@ -5,8 +5,12 @@ import shutil
 from langchain_chroma import Chroma
 from langchain_core.documents import Document
 from langchain_huggingface import HuggingFaceEmbeddings
-from langchain_text_splitters import RecursiveCharacterTextSplitter
 from pypdf import PdfReader
+
+try:
+    from retrieval.common import split_documents_with_chunk_ids
+except ModuleNotFoundError:
+    from src.retrieval.common import split_documents_with_chunk_ids
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
@@ -103,11 +107,7 @@ def reset_vector_store() -> None:
 
 
 def build_vector_store(documents: list[Document]) -> list[Document]:
-    splitter = RecursiveCharacterTextSplitter(
-        chunk_size=800,
-        chunk_overlap=150,
-    )
-    chunks = splitter.split_documents(documents)
+    chunks = split_documents_with_chunk_ids(documents)
 
     embeddings = HuggingFaceEmbeddings(
         model_name=EMBEDDING_MODEL,
