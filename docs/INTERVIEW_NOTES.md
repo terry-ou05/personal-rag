@@ -4,7 +4,7 @@
 
 IT Ops Knowledge Base RAG Assistant is a local RAG question-answering system I built for simulated IT operations troubleshooting documents. It uses LangChain, DeepSeek, Chroma, BGE Embedding, and Streamlit. The app can load TXT, Markdown, and PDF files, attach metadata, build a local vector knowledge base, and answer questions based on retrieved document chunks.
 
-The project also supports web-based document upload, one-click knowledge-base rebuild, metadata filtering, chat history, adjustable top-k retrieval, and source/reference snippet display. I used Codex to help with coding, debugging, documentation, verification commands, and Git branch-based iteration.
+The project also supports web-based document upload, one-click knowledge-base rebuild, metadata filtering, chat history, adjustable top-k retrieval, source/reference snippet display, and retrieval baseline evaluation. I used Codex to help with coding, debugging, documentation, verification commands, and Git branch-based iteration.
 
 ## 3-Minute Project Introduction
 
@@ -13,6 +13,8 @@ This project is a local IT operations knowledge-base RAG assistant. The goal is 
 The backend workflow is handled mainly by `src/ingest.py`. It reads files from `data/raw/`, supports TXT, Markdown, and PDF, merges metadata from `data/metadata.json`, splits text into chunks, generates embeddings using `BAAI/bge-small-zh-v1.5`, and stores vectors plus metadata in a local Chroma database.
 
 The web interface is built with Streamlit in `src/app.py`. It lets users upload documents, rebuild the knowledge base, select metadata filters, ask questions, keep chat history, adjust retriever top-k, and inspect sources and reference snippets. There is also a command-line entry point in `src/ask.py`.
+
+In V7, I added a retrieval evaluation baseline. It uses 30 manually checked questions from the public IT ops documents and measures Recall@1, Recall@3, Recall@5, MRR, zero-hit rate, and retrieval latency. The current dense Chroma retriever reaches Recall@1 86.67%, Recall@3 100%, Recall@5 100%, and MRR 0.9278.
 
 For development, I used Codex as an AI coding assistant. I asked it to inspect the codebase, make scoped changes, run verification commands, improve documentation, and manage Git branches. This helped me practice a more structured AI coding workflow rather than only writing small isolated scripts.
 
@@ -42,6 +44,14 @@ Embedding converts text into numerical vectors. Text with similar meaning should
 
 Top-k is the number of retrieved chunks returned by the retriever. A smaller top-k gives more focused context, while a larger top-k provides more information but may include less relevant chunks.
 
+### What are Recall@K and MRR?
+
+Recall@K checks whether the expected source document appears within the top K retrieved chunks. MRR, or Mean Reciprocal Rank, rewards the expected source appearing earlier in the ranked results. These metrics let me evaluate retrieval quality before answer generation.
+
+### Why build a baseline before Hybrid Retrieval?
+
+A baseline gives a measurable comparison point. Before adding BM25, RRF, reranking, or query rewrite, I want to know how well the existing Chroma dense retriever performs. Then V8 improvements can be compared with real numbers.
+
 ### What is metadata filtering?
 
 Metadata filtering narrows retrieval by fields such as category, system, severity, and document type. In this project, it makes the search closer to an enterprise knowledge-base workflow where documents are organized by operational context.
@@ -64,7 +74,7 @@ It is still a local showcase project. It does not include public deployment, use
 
 ### If you continue improving it, what would you do next?
 
-I would add screenshots, improve error handling, write lightweight tests for document loading and source formatting, add retrieval trace, and then consider hybrid retrieval with BM25 plus vector search.
+I would use the V7 baseline as the control group, then add Hybrid Retrieval with BM25 plus vector search in V8 and compare Recall@K, MRR, zero-hit rate, and latency against the current dense retriever.
 
 ### Why did you choose Streamlit?
 

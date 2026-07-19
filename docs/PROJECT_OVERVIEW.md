@@ -36,6 +36,7 @@ The project helps answer IT troubleshooting questions from local runbooks instea
 - Adjust retriever top-k from the sidebar
 - Filter retrieval by metadata fields
 - Display retrieved sources and reference snippets
+- Run a retrieval-only evaluation baseline with Recall@K, MRR, zero-hit rate, and latency
 
 ## Tech Stack
 
@@ -54,9 +55,28 @@ The project helps answer IT troubleshooting questions from local runbooks instea
 
 ## Current Version
 
-The current version is a local runnable IT ops showcase version. It includes the full basic RAG workflow, public IT troubleshooting sample documents, metadata ingestion, a Streamlit UI, web-based document upload, one-click knowledge-base rebuild, chat history, adjustable top-k retrieval, metadata filters, and source/reference snippet display.
+The current version is a local runnable IT ops showcase version. It includes the full basic RAG workflow, public IT troubleshooting sample documents, metadata ingestion, a Streamlit UI, web-based document upload, one-click knowledge-base rebuild, chat history, adjustable top-k retrieval, metadata filters, source/reference snippet display, and a retrieval evaluation baseline.
 
 It is intended for GitHub and resume presentation. It does not include public deployment, real enterprise documents, multi-user accounts, cloud storage, OCR, complex agent workflows, reranking, or production monitoring.
+
+## V7 Retrieval Baseline
+
+V7 adds a repeatable retrieval-only evaluation. The goal is to measure whether the dense Chroma retriever can find the expected source document before answer generation. The evaluation does not call DeepSeek, so results are not affected by generation quality.
+
+Current baseline:
+
+- Questions: 30
+- Documents: 10
+- Chunks: 16
+- Recall@1: 86.67%
+- Recall@3: 100.00%
+- Recall@5: 100.00%
+- MRR: 0.9278
+- Zero-hit Rate: 0.00%
+- Average Retrieval Latency: 9.81 ms
+- P95 Retrieval Latency: 10.35 ms
+
+This gives the project a measurable starting point before adding Hybrid Retrieval, BM25, RRF, reranking, or query rewrite.
 
 ## Future Extensions
 

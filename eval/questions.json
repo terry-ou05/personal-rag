@@ -1,0 +1,272 @@
+[
+  {
+    "id": "cpu-001",
+    "question": "服务器 CPU 使用率一直超过 90% 应该先查什么？",
+    "expected_source": "itops_server_cpu_high.md",
+    "expected_system": "server",
+    "expected_category": "infrastructure",
+    "difficulty": "easy",
+    "query_type": "symptom"
+  },
+  {
+    "id": "cpu-002",
+    "question": "Linux 上怎么找出最耗 CPU 的进程？",
+    "expected_source": "itops_server_cpu_high.md",
+    "expected_system": "server",
+    "expected_category": "infrastructure",
+    "difficulty": "easy",
+    "query_type": "keyword"
+  },
+  {
+    "id": "cpu-003",
+    "question": "API 变慢并且机器 load 很高，排障步骤是什么？",
+    "expected_source": "itops_server_cpu_high.md",
+    "expected_system": "server",
+    "expected_category": "infrastructure",
+    "difficulty": "medium",
+    "query_type": "symptom"
+  },
+  {
+    "id": "cpu-004",
+    "question": "top 看到某个 batch job 占满 CPU，要不要直接 kill？",
+    "expected_source": "itops_server_cpu_high.md",
+    "expected_system": "server",
+    "expected_category": "infrastructure",
+    "difficulty": "hard",
+    "query_type": "decision"
+  },
+  {
+    "id": "cpu-005",
+    "question": "ps aux --sort=-%cpu 这个命令适合排查什么问题？",
+    "expected_source": "itops_server_cpu_high.md",
+    "expected_system": "server",
+    "expected_category": "infrastructure",
+    "difficulty": "medium",
+    "query_type": "technical"
+  },
+  {
+    "id": "disk-001",
+    "question": "服务器磁盘空间快满了应该如何定位大文件？",
+    "expected_source": "itops_server_disk_full.md",
+    "expected_system": "server",
+    "expected_category": "infrastructure",
+    "difficulty": "easy",
+    "query_type": "symptom"
+  },
+  {
+    "id": "disk-002",
+    "question": "df -h 显示根分区 90%，下一步查哪里？",
+    "expected_source": "itops_server_disk_full.md",
+    "expected_system": "server",
+    "expected_category": "infrastructure",
+    "difficulty": "easy",
+    "query_type": "technical"
+  },
+  {
+    "id": "disk-003",
+    "question": "应用写日志失败，可能是哪个运维问题？",
+    "expected_source": "itops_server_disk_full.md",
+    "expected_system": "server",
+    "expected_category": "infrastructure",
+    "difficulty": "medium",
+    "query_type": "symptom"
+  },
+  {
+    "id": "disk-004",
+    "question": "怎么查 /var 下面哪个目录占用空间最大？",
+    "expected_source": "itops_server_disk_full.md",
+    "expected_system": "server",
+    "expected_category": "infrastructure",
+    "difficulty": "easy",
+    "query_type": "keyword"
+  },
+  {
+    "id": "disk-005",
+    "question": "清理磁盘时为什么不能随便删除数据库目录？",
+    "expected_source": "itops_server_disk_full.md",
+    "expected_system": "server",
+    "expected_category": "infrastructure",
+    "difficulty": "hard",
+    "query_type": "decision"
+  },
+  {
+    "id": "nginx-001",
+    "question": "Nginx 返回 502 Bad Gateway 应该怎么排查？",
+    "expected_source": "itops_nginx_502.md",
+    "expected_system": "nginx",
+    "expected_category": "application",
+    "difficulty": "easy",
+    "query_type": "error_code"
+  },
+  {
+    "id": "nginx-002",
+    "question": "用户访问网站看到 502，可能是 upstream 服务的问题吗？",
+    "expected_source": "itops_nginx_502.md",
+    "expected_system": "nginx",
+    "expected_category": "application",
+    "difficulty": "medium",
+    "query_type": "symptom"
+  },
+  {
+    "id": "nginx-003",
+    "question": "怎么确认 Nginx 配置的后端端口有没有监听？",
+    "expected_source": "itops_nginx_502.md",
+    "expected_system": "nginx",
+    "expected_category": "application",
+    "difficulty": "easy",
+    "query_type": "technical"
+  },
+  {
+    "id": "nginx-004",
+    "question": "curl 127.0.0.1:8080/health 是用来验证什么的？",
+    "expected_source": "itops_nginx_502.md",
+    "expected_system": "nginx",
+    "expected_category": "application",
+    "difficulty": "medium",
+    "query_type": "technical"
+  },
+  {
+    "id": "nginx-005",
+    "question": "网关错误但应用进程还在，接下来应该看哪些日志？",
+    "expected_source": "itops_nginx_502.md",
+    "expected_system": "nginx",
+    "expected_category": "application",
+    "difficulty": "hard",
+    "query_type": "symptom"
+  },
+  {
+    "id": "mysql-001",
+    "question": "MySQL 慢查询应该从哪里开始分析？",
+    "expected_source": "itops_mysql_slow_query.md",
+    "expected_system": "mysql",
+    "expected_category": "database",
+    "difficulty": "easy",
+    "query_type": "keyword"
+  },
+  {
+    "id": "mysql-002",
+    "question": "接口超时怀疑数据库 SQL 很慢，怎么查执行计划？",
+    "expected_source": "itops_mysql_slow_query.md",
+    "expected_system": "mysql",
+    "expected_category": "database",
+    "difficulty": "medium",
+    "query_type": "symptom"
+  },
+  {
+    "id": "mysql-003",
+    "question": "EXPLAIN SELECT 主要用于排查什么？",
+    "expected_source": "itops_mysql_slow_query.md",
+    "expected_system": "mysql",
+    "expected_category": "database",
+    "difficulty": "easy",
+    "query_type": "technical"
+  },
+  {
+    "id": "mysql-004",
+    "question": "SQL 没有命中索引会导致什么问题？",
+    "expected_source": "itops_mysql_slow_query.md",
+    "expected_system": "mysql",
+    "expected_category": "database",
+    "difficulty": "medium",
+    "query_type": "technical"
+  },
+  {
+    "id": "mysql-005",
+    "question": "数据库查询慢可能和锁等待或长事务有关吗？",
+    "expected_source": "itops_mysql_slow_query.md",
+    "expected_system": "mysql",
+    "expected_category": "database",
+    "difficulty": "hard",
+    "query_type": "symptom"
+  },
+  {
+    "id": "redis-001",
+    "question": "Redis 内存占用过高应该怎么排查？",
+    "expected_source": "itops_redis_memory_high.md",
+    "expected_system": "redis",
+    "expected_category": "cache",
+    "difficulty": "easy",
+    "query_type": "keyword"
+  },
+  {
+    "id": "redis-002",
+    "question": "缓存写入失败并且 Redis 接近 maxmemory，可能是什么原因？",
+    "expected_source": "itops_redis_memory_high.md",
+    "expected_system": "redis",
+    "expected_category": "cache",
+    "difficulty": "medium",
+    "query_type": "symptom"
+  },
+  {
+    "id": "redis-003",
+    "question": "redis-cli --bigkeys 可以帮助定位什么问题？",
+    "expected_source": "itops_redis_memory_high.md",
+    "expected_system": "redis",
+    "expected_category": "cache",
+    "difficulty": "easy",
+    "query_type": "technical"
+  },
+  {
+    "id": "redis-004",
+    "question": "缓存 key 没有 TTL 会带来什么风险？",
+    "expected_source": "itops_redis_memory_high.md",
+    "expected_system": "redis",
+    "expected_category": "cache",
+    "difficulty": "medium",
+    "query_type": "technical"
+  },
+  {
+    "id": "redis-005",
+    "question": "Redis 内存高的时候为什么不能直接 flush？",
+    "expected_source": "itops_redis_memory_high.md",
+    "expected_system": "redis",
+    "expected_category": "cache",
+    "difficulty": "hard",
+    "query_type": "decision"
+  },
+  {
+    "id": "login-001",
+    "question": "用户登录服务器失败应该先确认什么范围？",
+    "expected_source": "itops_login_failure.md",
+    "expected_system": "authentication",
+    "expected_category": "security",
+    "difficulty": "easy",
+    "query_type": "symptom"
+  },
+  {
+    "id": "login-002",
+    "question": "SSH 登录失败可能和密钥权限有关吗？",
+    "expected_source": "itops_login_failure.md",
+    "expected_system": "authentication",
+    "expected_category": "security",
+    "difficulty": "medium",
+    "query_type": "technical"
+  },
+  {
+    "id": "login-003",
+    "question": "怎么查看 Linux 认证失败日志？",
+    "expected_source": "itops_login_failure.md",
+    "expected_system": "authentication",
+    "expected_category": "security",
+    "difficulty": "easy",
+    "query_type": "keyword"
+  },
+  {
+    "id": "login-004",
+    "question": "很多用户都无法登录时，应该怀疑账号还是认证服务？",
+    "expected_source": "itops_login_failure.md",
+    "expected_system": "authentication",
+    "expected_category": "security",
+    "difficulty": "hard",
+    "query_type": "decision"
+  },
+  {
+    "id": "login-005",
+    "question": "账号被锁定或者密码过期会导致什么现象？",
+    "expected_source": "itops_login_failure.md",
+    "expected_system": "authentication",
+    "expected_category": "security",
+    "difficulty": "medium",
+    "query_type": "symptom"
+  }
+]

@@ -17,6 +17,7 @@ This project focuses on demonstrating an AI coding workflow with Codex, practica
 - Chat history in Streamlit UI
 - Adjustable retriever top-k
 - Retrieved source and reference snippet display
+- Retrieval evaluation baseline with Recall@K and MRR
 - AI coding workflow with Codex + Git branches + PR-style iteration
 
 ## Demo Status
@@ -81,6 +82,7 @@ flowchart LR
 - Tune retriever `top-k` from the sidebar
 - Filter retrieval by IT ops metadata fields
 - Display retrieved source names, metadata, page information, and reference snippets
+- Evaluate dense retrieval quality with a repeatable question set
 
 ## Project Structure
 
@@ -92,6 +94,9 @@ personal-rag/
 │   └── ask.py           # Command-line RAG question-answering entry point
 ├── data/raw/            # Public IT ops sample documents and local knowledge files
 ├── data/metadata.json   # Metadata for public IT ops sample documents
+├── eval/
+│   ├── questions.json   # Retrieval evaluation questions
+│   └── reports/         # Generated retrieval baseline reports
 ├── chroma_db/           # Local generated vector database, not committed
 ├── .env                 # Local API key config, not committed
 ├── requirements.txt     # Python dependencies
@@ -103,7 +108,13 @@ personal-rag/
 Create and activate a virtual environment, then install dependencies:
 
 ```powershell
-pip install -r requirements.txt
+& 'C:\Users\14985\Desktop\personal-rag\.venv\Scripts\python.exe' -m pip install -r requirements.txt
+```
+
+Install test dependencies when running the retrieval evaluation test suite:
+
+```powershell
+& 'C:\Users\14985\Desktop\personal-rag\.venv\Scripts\python.exe' -m pip install -r requirements-dev.txt
 ```
 
 Create a local `.env` file in the project root:
@@ -142,6 +153,42 @@ Start the Streamlit web app:
 & 'C:\Users\14985\Desktop\personal-rag\.venv\Scripts\python.exe' -m streamlit run src\app.py
 ```
 
+Run the V7 retrieval evaluation baseline:
+
+```powershell
+& 'C:\Users\14985\Desktop\personal-rag\.venv\Scripts\python.exe' src\evaluate_retrieval.py
+```
+
+Run tests:
+
+```powershell
+& 'C:\Users\14985\Desktop\personal-rag\.venv\Scripts\python.exe' -m pytest -q
+```
+
+## Retrieval Evaluation Baseline
+
+V7 adds a repeatable retrieval-only evaluation baseline. It evaluates the current Chroma dense retriever without calling DeepSeek, so the metrics measure retrieval quality rather than answer generation quality.
+
+Current V7 baseline result:
+
+- Questions: 30
+- Documents: 10
+- Chunks: 16
+- Recall@1: 86.67%
+- Recall@3: 100.00%
+- Recall@5: 100.00%
+- MRR: 0.9278
+- Zero-hit Rate: 0.00%
+- Average Retrieval Latency: 9.81 ms
+- P95 Retrieval Latency: 10.35 ms
+
+Generated reports:
+
+- `eval/reports/v7_baseline_report.md`
+- `eval/reports/v7_baseline_report.json`
+
+This baseline is intended to make future retrieval improvements measurable. V8 can compare Hybrid Retrieval against these numbers instead of relying only on subjective answer quality.
+
 ## Example Questions
 
 - 服务器 CPU 使用率过高应该怎么排查？
@@ -171,4 +218,4 @@ This repository is also used to demonstrate an AI coding workflow:
 
 ## Resume Description
 
-基于 LangChain、DeepSeek、Chroma、BGE Embedding 和 Streamlit 开发了一个面向 IT 运维知识库的本地 RAG 问答原型，支持 TXT / Markdown / PDF 运维文档加载、网页端文件上传、一键重建知识库、metadata 过滤、可调 top-k 语义检索、聊天历史展示和回答来源追踪。项目通过 Chroma 保存本地向量库，并使用 DeepSeek 基于检索片段生成排障回答，可用于模拟企业 IT 服务台知识库问答场景，同时展示了使用 Codex 进行 AI coding、调试、文档整理和 Git 分支迭代的完整开发流程。
+基于 LangChain、DeepSeek、Chroma、BGE Embedding 和 Streamlit 开发了一个面向 IT 运维知识库的本地 RAG 问答原型，支持 TXT / Markdown / PDF 运维文档加载、网页端文件上传、一键重建知识库、metadata 过滤、可调 top-k 语义检索、聊天历史展示和回答来源追踪。项目通过 Chroma 保存本地向量库，并使用 DeepSeek 基于检索片段生成排障回答，同时建立了 Recall@K、MRR、Zero-hit Rate 和检索延迟评测基线，可用于模拟企业 IT 服务台知识库问答场景并量化后续检索优化效果。

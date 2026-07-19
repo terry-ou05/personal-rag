@@ -95,6 +95,41 @@ Sources and reference snippets make the answer more trustworthy and easier to ve
 
 For interviews, this is important because it shows that the project is not just calling an LLM directly. It includes a retrieval layer and exposes evidence behind the generated answer.
 
+## Retrieval Evaluation Baseline
+
+V7 adds `src/evaluate_retrieval.py`, which evaluates only the Chroma dense retriever. It does not call DeepSeek and does not generate answers.
+
+The evaluation questions live in `eval/questions.json`. Each question includes:
+
+- `question`
+- `expected_source`
+- `expected_system`
+- `expected_category`
+- `difficulty`
+- `query_type`
+
+The script retrieves Top-K chunks, compares each returned metadata `source` with `expected_source`, and calculates:
+
+- Recall@1, Recall@3, Recall@5
+- MRR
+- Zero-hit Rate
+- Average Retrieval Latency
+- P95 Retrieval Latency
+
+Recall@K means the expected source appears within the top K retrieved chunks. MRR means Mean Reciprocal Rank, which rewards the expected source appearing earlier in the result list.
+
+Current V7 result:
+
+- Recall@1: 86.67%
+- Recall@3: 100.00%
+- Recall@5: 100.00%
+- MRR: 0.9278
+- Zero-hit Rate: 0.00%
+- Average Retrieval Latency: 9.81 ms
+- P95 Retrieval Latency: 10.35 ms
+
+This baseline matters because V8 can compare Hybrid Retrieval against the current dense retriever instead of relying on subjective impressions.
+
 ## How to Explain This in an Interview
 
 A short explanation:
