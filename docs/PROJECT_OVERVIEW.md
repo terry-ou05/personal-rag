@@ -38,6 +38,7 @@ The project helps answer IT troubleshooting questions from local runbooks instea
 - Display retrieved sources and reference snippets
 - Run a retrieval-only evaluation baseline with Recall@K, MRR, zero-hit rate, and latency
 - Compare Dense, BM25, and Hybrid RRF retrieval modes
+- Compare Cross-Encoder reranking on top of Dense and Hybrid candidates
 
 ## Tech Stack
 
@@ -51,6 +52,8 @@ The project helps answer IT troubleshooting questions from local runbooks instea
 - BAAI/bge-small-zh-v1.5
 - rank-bm25
 - jieba
+- sentence-transformers CrossEncoder
+- BAAI/bge-reranker-base
 - Streamlit
 - pypdf
 - python-dotenv
@@ -58,7 +61,7 @@ The project helps answer IT troubleshooting questions from local runbooks instea
 
 ## Current Version
 
-The current version is a local runnable IT ops showcase version. It includes the full basic RAG workflow, public IT troubleshooting sample documents, metadata ingestion, a Streamlit UI, web-based document upload, one-click knowledge-base rebuild, chat history, adjustable top-k retrieval, metadata filters, source/reference snippet display, a retrieval evaluation baseline, and optional Hybrid Retrieval.
+The current version is a local runnable IT ops showcase version. It includes the full basic RAG workflow, public IT troubleshooting sample documents, metadata ingestion, a Streamlit UI, web-based document upload, one-click knowledge-base rebuild, chat history, adjustable top-k retrieval, metadata filters, source/reference snippet display, retrieval evaluation baselines, optional Hybrid Retrieval, and optional Cross-Encoder reranking.
 
 It is intended for GitHub and resume presentation. It does not include public deployment, real enterprise documents, multi-user accounts, cloud storage, OCR, complex agent workflows, reranking, Qdrant, or production monitoring.
 
@@ -95,6 +98,19 @@ The V8 evaluation compares three modes on the same 30 questions:
 
 Hybrid improved `disk-002` from rank 2 to rank 1 because the query contains `df -h` and `90%`. It also introduced one Top-1 regression on `login-003`, and its MRR is lower than Dense. Based on this small dataset, the app keeps Dense as the default and exposes Hybrid RRF as an optional mode.
 
+## V9 Reranker Result
+
+V9 adds a Cross-Encoder reranker on top of candidate retrieval. It uses `BAAI/bge-reranker-base` on CPU. The reranker does not retrieve new documents; it only reranks Top-5 candidates from Dense or Hybrid.
+
+| Mode | Recall@1 | Recall@3 | Recall@5 | MRR | Zero-hit |
+|---|---:|---:|---:|---:|---:|
+| Dense | 86.67% | 100.00% | 100.00% | 0.9278 | 0.00% |
+| Hybrid RRF | 86.67% | 96.67% | 100.00% | 0.9122 | 0.00% |
+| Dense + Reranker | 96.67% | 100.00% | 100.00% | 0.9833 | 0.00% |
+| Hybrid + Reranker | 96.67% | 100.00% | 100.00% | 0.9833 | 0.00% |
+
+Dense + Reranker improved `disk-002`, `disk-003`, and `login-005` to Top-1, with no Top-1 regressions. `nginx-005` stayed at rank 2. The tradeoff is latency: model loading took about 8.20 seconds in the final cached run, and warm reranking averaged about 749 ms on CPU. The Streamlit UI defaults to Dense + Reranker for quality, while Dense remains available as the faster mode.
+
 ## Future Extensions
 
 Possible next steps include:
@@ -105,6 +121,6 @@ Possible next steps include:
 - Add lightweight unit tests for document loading and source formatting
 - Add hybrid retrieval with BM25 + vector search
 - Add retrieval trace for interview-friendly explanation
-- Try a reranker after using V8 metrics as a control group
-- Add query rewrite for vague IT operations questions
+- Add query rewrite only if future reports show unresolved vague-query failures
+- Add retrieval sufficiency checks before asking DeepSeek to answer
 - Add a safer upload overwrite confirmation flow

@@ -24,6 +24,7 @@ def reciprocal_rank_fusion(
                 chunk_id=result.chunk_id,
                 page_content=result.page_content,
                 metadata=dict(result.metadata),
+                retrieval_mode="hybrid",
             )
             scores[result.chunk_id] = 0.0
 
@@ -58,6 +59,7 @@ def reciprocal_rank_fusion(
     output = []
     for fused_rank, result in enumerate(ranked[:final_top_k], start=1):
         result.fused_rank = fused_rank
+        result.candidate_rank = fused_rank
         result.fused_score = scores[result.chunk_id]
         output.append(result)
     return output

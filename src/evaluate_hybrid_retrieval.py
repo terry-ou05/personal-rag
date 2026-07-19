@@ -90,6 +90,10 @@ def source_rows(results) -> list[dict[str, Any]]:
                 "bm25_score": result.bm25_score,
                 "fused_rank": result.fused_rank,
                 "fused_score": result.fused_score,
+                "candidate_rank": result.candidate_rank,
+                "retrieval_mode": result.retrieval_mode,
+                "rerank_rank": result.rerank_rank,
+                "rerank_score": result.rerank_score,
             }
         )
     return rows

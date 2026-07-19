@@ -11,6 +11,14 @@ __pycache__/
 # Vector database
 chroma_db/
 
+# Model caches and local model files
+.cache/
+models/
+*.safetensors
+*.bin
+*.pt
+*.pth
+
 # Streamlit secrets
 .streamlit/secrets.toml
 

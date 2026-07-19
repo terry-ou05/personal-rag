@@ -64,6 +64,8 @@ class BM25Retriever:
             results.append(
                 result_from_document(
                     self.documents[index],
+                    retrieval_mode="bm25",
+                    candidate_rank=rank,
                     bm25_score=float(scores[index]),
                     bm25_rank=rank,
                 )

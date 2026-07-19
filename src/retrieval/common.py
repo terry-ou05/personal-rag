@@ -18,16 +18,24 @@ class RetrievalResult:
     chunk_id: str
     page_content: str
     metadata: dict[str, Any]
+    retrieval_mode: str | None = None
+    candidate_rank: int | None = None
     dense_score: float | None = None
     dense_rank: int | None = None
     bm25_score: float | None = None
     bm25_rank: int | None = None
     fused_score: float | None = None
     fused_rank: int | None = None
+    rerank_score: float | None = None
+    rerank_rank: int | None = None
 
     def to_document(self) -> Document:
         metadata = dict(self.metadata)
         metadata["chunk_id"] = self.chunk_id
+        if self.retrieval_mode is not None:
+            metadata["retrieval_mode"] = self.retrieval_mode
+        if self.candidate_rank is not None:
+            metadata["candidate_rank"] = self.candidate_rank
         if self.dense_rank is not None:
             metadata["dense_rank"] = self.dense_rank
         if self.dense_score is not None:
@@ -40,6 +48,10 @@ class RetrievalResult:
             metadata["fused_rank"] = self.fused_rank
         if self.fused_score is not None:
             metadata["fused_score"] = self.fused_score
+        if self.rerank_rank is not None:
+            metadata["rerank_rank"] = self.rerank_rank
+        if self.rerank_score is not None:
+            metadata["rerank_score"] = self.rerank_score
         return Document(page_content=self.page_content, metadata=metadata)
 
 
@@ -113,6 +125,8 @@ def metadata_matches_filter(metadata: dict[str, Any], metadata_filter: dict | No
 def result_from_document(
     document: Document,
     *,
+    retrieval_mode: str | None = None,
+    candidate_rank: int | None = None,
     dense_score: float | None = None,
     dense_rank: int | None = None,
     bm25_score: float | None = None,
@@ -125,8 +139,28 @@ def result_from_document(
         chunk_id=chunk_id,
         page_content=document.page_content,
         metadata=metadata,
+        retrieval_mode=retrieval_mode,
+        candidate_rank=candidate_rank,
         dense_score=dense_score,
         dense_rank=dense_rank,
         bm25_score=bm25_score,
         bm25_rank=bm25_rank,
+    )
+
+
+def clone_result(result: RetrievalResult) -> RetrievalResult:
+    return RetrievalResult(
+        chunk_id=result.chunk_id,
+        page_content=result.page_content,
+        metadata=dict(result.metadata),
+        retrieval_mode=result.retrieval_mode,
+        candidate_rank=result.candidate_rank,
+        dense_score=result.dense_score,
+        dense_rank=result.dense_rank,
+        bm25_score=result.bm25_score,
+        bm25_rank=result.bm25_rank,
+        fused_score=result.fused_score,
+        fused_rank=result.fused_rank,
+        rerank_score=result.rerank_score,
+        rerank_rank=result.rerank_rank,
     )
