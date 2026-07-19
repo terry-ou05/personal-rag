@@ -1,26 +1,28 @@
-# AI Learning Knowledge Assistant
+# IT Ops Knowledge Base RAG Assistant
 
-AI Learning Knowledge Assistant is a local personal knowledge-base RAG question-answering system built with LangChain, DeepSeek, Chroma, BGE Embedding, and Streamlit. It supports uploading TXT, Markdown, and PDF documents, building a local vector knowledge base, and answering questions based on retrieved context.
+IT Ops Knowledge Base RAG Assistant is a local enterprise-scenario RAG question-answering prototype built with LangChain, DeepSeek, Chroma, BGE Embedding, and Streamlit. It supports TXT, Markdown, and PDF documents, builds a local vector knowledge base, and answers IT operations troubleshooting questions based on retrieved context.
 
-This project focuses on demonstrating an AI coding workflow with Codex, practical RAG application development, local knowledge-base implementation, debugging, documentation, and Git branch-based iteration.
+This project focuses on demonstrating an AI coding workflow with Codex, practical RAG application development, metadata-aware retrieval, local knowledge-base implementation, debugging, documentation, and Git branch-based iteration. It is a local runnable showcase project, not a deployed production system.
 
 ## Highlights
 
-- Local RAG knowledge base powered by LangChain
+- IT operations knowledge base powered by LangChain RAG
 - DeepSeek Chat Model integration
 - BGE Embedding semantic retrieval
 - Chroma local vector database
 - TXT / Markdown / PDF document loading
+- Metadata-aware filtering by category, system, severity, and document type
 - Web-based file upload
 - One-click knowledge base rebuild
 - Chat history in Streamlit UI
 - Adjustable retriever top-k
 - Retrieved source and reference snippet display
+- Retrieval evaluation baseline with Recall@K and MRR
 - AI coding workflow with Codex + Git branches + PR-style iteration
 
 ## Demo Status
 
-- Current version: local runnable showcase version.
+- Current version: local runnable IT ops showcase version.
 - Public online demo: not deployed yet.
 - The app can be run locally with the commands below.
 - No public demo URL is provided until an actual deployment exists.
@@ -31,9 +33,9 @@ Screenshots can be added after local UI testing.
 
 Planned screenshot coverage:
 
-- Streamlit chat interface
+- Streamlit IT ops chat interface
 - Document upload and rebuild workflow
-- Retrieved sources and reference snippets
+- Metadata filters, retrieved sources, and reference snippets
 
 ## Tech Stack
 
@@ -53,30 +55,34 @@ Planned screenshot coverage:
 
 ```mermaid
 flowchart LR
-    A[TXT / Markdown / PDF Documents] --> B[ingest.py]
+    A[IT Ops TXT / Markdown / PDF Documents] --> B[ingest.py]
+    M[data/metadata.json] --> B
     B --> C[Text Splitting]
     C --> D[BGE Embedding]
-    D --> E[Chroma Vector DB]
-    F[User Question] --> G[Retriever]
+    D --> E[Chroma Vector DB with Metadata]
+    F[User IT Ops Question] --> G[Retriever + Metadata Filter]
     E --> G
-    G --> H[Relevant Chunks]
+    G --> H[Relevant Troubleshooting Chunks]
     H --> I[DeepSeek Chat Model]
     I --> J[Streamlit Answer with Sources]
 ```
 
 ## Features
 
-- Load local TXT, Markdown, and PDF files into a personal knowledge base
+- Load local TXT, Markdown, and PDF files into an IT operations knowledge base
 - Split documents into retrievable chunks
 - Generate semantic embeddings with `BAAI/bge-small-zh-v1.5`
 - Store vectors locally with Chroma
+- Preserve metadata such as category, system, severity, document type, and tags
 - Ask questions through a Streamlit web interface
 - Upload documents from the web UI
 - Rebuild the knowledge base with one click
 - Keep chat history in the current Streamlit session
 - Clear chat history from the sidebar
 - Tune retriever `top-k` from the sidebar
-- Display retrieved source names, page metadata, and reference snippets
+- Filter retrieval by IT ops metadata fields
+- Display retrieved source names, metadata, page information, and reference snippets
+- Evaluate dense retrieval quality with a repeatable question set
 
 ## Project Structure
 
@@ -86,7 +92,11 @@ personal-rag/
 │   ├── ingest.py        # Load raw documents, split text, build Chroma vector DB
 │   ├── app.py           # Streamlit web UI for upload, rebuild, and RAG chat
 │   └── ask.py           # Command-line RAG question-answering entry point
-├── data/raw/            # Public sample documents and local knowledge files
+├── data/raw/            # Public IT ops sample documents and local knowledge files
+├── data/metadata.json   # Metadata for public IT ops sample documents
+├── eval/
+│   ├── questions.json   # Retrieval evaluation questions
+│   └── reports/         # Generated retrieval baseline reports
 ├── chroma_db/           # Local generated vector database, not committed
 ├── .env                 # Local API key config, not committed
 ├── requirements.txt     # Python dependencies
@@ -98,7 +108,13 @@ personal-rag/
 Create and activate a virtual environment, then install dependencies:
 
 ```powershell
-pip install -r requirements.txt
+& 'C:\Users\14985\Desktop\personal-rag\.venv\Scripts\python.exe' -m pip install -r requirements.txt
+```
+
+Install test dependencies when running the retrieval evaluation test suite:
+
+```powershell
+& 'C:\Users\14985\Desktop\personal-rag\.venv\Scripts\python.exe' -m pip install -r requirements-dev.txt
 ```
 
 Create a local `.env` file in the project root:
@@ -111,10 +127,11 @@ Do not commit `.env` to Git.
 
 ## How to Use
 
-1. Put learning materials into `data/raw/`, or upload `.txt`, `.md`, or `.pdf` files in the Streamlit page.
+1. Put IT operations runbooks into `data/raw/`, or upload `.txt`, `.md`, or `.pdf` files in the Streamlit page.
 2. Click `Rebuild Knowledge Base` to rebuild the local Chroma vector database.
-3. Ask questions in the web chat or command-line interface.
-4. Review retrieved sources and reference snippets under each answer.
+3. Optionally select metadata filters such as category, system, severity, or document type.
+4. Ask questions in the web chat or command-line interface.
+5. Review retrieved sources and reference snippets under each answer.
 
 ## Commands
 
@@ -136,12 +153,49 @@ Start the Streamlit web app:
 & 'C:\Users\14985\Desktop\personal-rag\.venv\Scripts\python.exe' -m streamlit run src\app.py
 ```
 
+Run the V7 retrieval evaluation baseline:
+
+```powershell
+& 'C:\Users\14985\Desktop\personal-rag\.venv\Scripts\python.exe' src\evaluate_retrieval.py
+```
+
+Run tests:
+
+```powershell
+& 'C:\Users\14985\Desktop\personal-rag\.venv\Scripts\python.exe' -m pytest -q
+```
+
+## Retrieval Evaluation Baseline
+
+V7 adds a repeatable retrieval-only evaluation baseline. It evaluates the current Chroma dense retriever without calling DeepSeek, so the metrics measure retrieval quality rather than answer generation quality.
+
+Current V7 baseline result:
+
+- Questions: 30
+- Documents: 10
+- Chunks: 16
+- Recall@1: 86.67%
+- Recall@3: 100.00%
+- Recall@5: 100.00%
+- MRR: 0.9278
+- Zero-hit Rate: 0.00%
+- Average Retrieval Latency: 9.81 ms
+- P95 Retrieval Latency: 10.35 ms
+
+Generated reports:
+
+- `eval/reports/v7_baseline_report.md`
+- `eval/reports/v7_baseline_report.json`
+
+This baseline is intended to make future retrieval improvements measurable. V8 can compare Hybrid Retrieval against these numbers instead of relying only on subjective answer quality.
+
 ## Example Questions
 
-- RAG 的核心流程是什么？
-- LangChain 在 RAG 里负责什么？
-- 我现在适合找哪些 AI 实习岗位？
-- 这个 Personal RAG 项目可以怎么写进简历？
+- 服务器 CPU 使用率过高应该怎么排查？
+- Nginx 出现 502 Bad Gateway 怎么处理？
+- MySQL 慢查询应该先看哪些信息？
+- Redis 内存占用过高可能是什么原因？
+- 用户登录失败应该如何定位？
 
 ## Git / Codex Workflow
 
@@ -160,8 +214,8 @@ This repository is also used to demonstrate an AI coding workflow:
 - `.venv/` is not committed.
 - `__pycache__/` and `*.pyc` are not committed.
 - Private files uploaded to `data/raw/` should not be committed to Git by default.
-- Public sample files may be committed, but real personal documents should stay local.
+- Public sample IT ops files may be committed, but real company documents should stay local.
 
 ## Resume Description
 
-基于 LangChain、DeepSeek、Chroma、BGE Embedding 和 Streamlit 开发了一个本地个人知识库 RAG 问答系统，支持 TXT / Markdown / PDF 文档加载、网页端文件上传、一键重建知识库、可调 top-k 语义检索、聊天历史展示和回答来源追踪。项目通过 Chroma 保存本地向量库，并使用 DeepSeek 基于检索片段生成回答，可用于 AI 学习资料管理、课程笔记问答和实习准备，同时展示了使用 Codex 进行 AI coding、调试、文档整理和 Git 分支迭代的完整开发流程。
+基于 LangChain、DeepSeek、Chroma、BGE Embedding 和 Streamlit 开发了一个面向 IT 运维知识库的本地 RAG 问答原型，支持 TXT / Markdown / PDF 运维文档加载、网页端文件上传、一键重建知识库、metadata 过滤、可调 top-k 语义检索、聊天历史展示和回答来源追踪。项目通过 Chroma 保存本地向量库，并使用 DeepSeek 基于检索片段生成排障回答，同时建立了 Recall@K、MRR、Zero-hit Rate 和检索延迟评测基线，可用于模拟企业 IT 服务台知识库问答场景并量化后续检索优化效果。

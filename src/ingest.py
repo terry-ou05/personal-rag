@@ -1,4 +1,5 @@
 from pathlib import Path
+import json
 import shutil
 
 from langchain_chroma import Chroma
@@ -9,34 +10,59 @@ from pypdf import PdfReader
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
+DATA_DIR = PROJECT_ROOT / "data"
 RAW_DATA_DIR = PROJECT_ROOT / "data" / "raw"
+METADATA_PATH = DATA_DIR / "metadata.json"
 CHROMA_DIR = PROJECT_ROOT / "chroma_db"
 COLLECTION_NAME = "personal_knowledge"
 EMBEDDING_MODEL = "BAAI/bge-small-zh-v1.5"
 
 
-def load_text_file(path: Path) -> Document:
+def load_metadata_index() -> dict[str, dict]:
+    if not METADATA_PATH.exists():
+        return {}
+
+    with METADATA_PATH.open("r", encoding="utf-8") as file:
+        metadata = json.load(file)
+
+    if not isinstance(metadata, dict):
+        raise ValueError(f"metadata file must be a JSON object: {METADATA_PATH}")
+
+    return {
+        str(file_name): values
+        for file_name, values in metadata.items()
+        if isinstance(values, dict)
+    }
+
+
+def build_document_metadata(path: Path, metadata_index: dict[str, dict]) -> dict:
+    metadata = {"source": str(path.relative_to(PROJECT_ROOT))}
+    metadata.update(metadata_index.get(path.name, {}))
+    return metadata
+
+
+def load_text_file(path: Path, metadata_index: dict[str, dict]) -> Document:
     text = path.read_text(encoding="utf-8", errors="ignore")
     return Document(
         page_content=text,
-        metadata={"source": str(path.relative_to(PROJECT_ROOT))},
+        metadata=build_document_metadata(path, metadata_index),
     )
 
 
-def load_pdf_file(path: Path) -> list[Document]:
+def load_pdf_file(path: Path, metadata_index: dict[str, dict]) -> list[Document]:
     reader = PdfReader(str(path))
     documents = []
+    base_metadata = build_document_metadata(path, metadata_index)
     for page_index, page in enumerate(reader.pages, start=1):
         text = page.extract_text() or ""
         if not text.strip():
             continue
+        page_metadata = dict(base_metadata)
+        page_metadata["page"] = page_index
         documents.append(
             Document(
                 page_content=text,
-                metadata={
-                    "source": str(path.relative_to(PROJECT_ROOT)),
-                    "page": page_index,
-                },
+                metadata=page_metadata,
             )
         )
     return documents
@@ -47,17 +73,18 @@ def load_documents() -> list[Document]:
         return []
 
     documents = []
+    metadata_index = load_metadata_index()
     for path in sorted(RAW_DATA_DIR.rglob("*")):
         if not path.is_file():
             continue
 
         suffix = path.suffix.lower()
         if suffix in {".txt", ".md"}:
-            document = load_text_file(path)
+            document = load_text_file(path, metadata_index)
             if document.page_content.strip():
                 documents.append(document)
         elif suffix == ".pdf":
-            documents.extend(load_pdf_file(path))
+            documents.extend(load_pdf_file(path, metadata_index))
 
     return documents
 

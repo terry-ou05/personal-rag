@@ -20,6 +20,12 @@ data/raw/*
 !data/raw/ai_learning_notes.md
 !data/raw/internship_notes.md
 !data/raw/project_notes.md
+!data/raw/itops_server_cpu_high.md
+!data/raw/itops_server_disk_full.md
+!data/raw/itops_nginx_502.md
+!data/raw/itops_mysql_slow_query.md
+!data/raw/itops_redis_memory_high.md
+!data/raw/itops_login_failure.md
 !data/raw/.gitkeep
 
 # OS / editor

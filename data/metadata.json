@@ -1,0 +1,44 @@
+{
+  "itops_server_cpu_high.md": {
+    "category": "infrastructure",
+    "system": "server",
+    "doc_type": "troubleshooting",
+    "severity": "high",
+    "tags": "cpu,linux,process,load"
+  },
+  "itops_server_disk_full.md": {
+    "category": "infrastructure",
+    "system": "server",
+    "doc_type": "troubleshooting",
+    "severity": "medium",
+    "tags": "disk,linux,cleanup,capacity"
+  },
+  "itops_nginx_502.md": {
+    "category": "application",
+    "system": "nginx",
+    "doc_type": "troubleshooting",
+    "severity": "high",
+    "tags": "nginx,502,upstream,gateway"
+  },
+  "itops_mysql_slow_query.md": {
+    "category": "database",
+    "system": "mysql",
+    "doc_type": "troubleshooting",
+    "severity": "medium",
+    "tags": "mysql,slow-query,index,performance"
+  },
+  "itops_redis_memory_high.md": {
+    "category": "cache",
+    "system": "redis",
+    "doc_type": "troubleshooting",
+    "severity": "medium",
+    "tags": "redis,memory,eviction,big-key"
+  },
+  "itops_login_failure.md": {
+    "category": "security",
+    "system": "authentication",
+    "doc_type": "runbook",
+    "severity": "high",
+    "tags": "login,ssh,account,security"
+  }
+}
