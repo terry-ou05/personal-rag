@@ -17,6 +17,7 @@ data/raw + data/metadata.json
 -> BGE Embedding
 -> Chroma with metadata
 -> Dense retriever or Hybrid RRF retriever with optional metadata filters
+-> optional Cross-Encoder reranker
 -> DeepSeek
 -> Streamlit answer with sources
 ```
@@ -64,11 +65,17 @@ data/raw + data/metadata.json
 
    Dense mode searches Chroma for chunks that are semantically close to the user's question. Hybrid mode runs Dense retrieval and BM25 retrieval, then combines candidates with Reciprocal Rank Fusion. Optional metadata filters limit both retrieval paths by category, system, severity, or document type.
 
-8. DeepSeek Chat Model
+8. Optional Cross-Encoder reranker
+
+   V9 can rerank the candidate chunks using `BAAI/bge-reranker-base`. Dense and Hybrid first retrieve Top-5 candidates. The Cross-Encoder then scores each query-chunk pair and reorders only those candidates.
+
+   This is different from Dense retrieval. Dense retrieval embeds queries and chunks separately, which is efficient for search. A Cross-Encoder reads the query and chunk together, which is slower but often better for final ranking. It is not used on the whole knowledge base because that would be much more expensive as the corpus grows.
+
+9. DeepSeek Chat Model
 
    DeepSeek receives the user question and retrieved context, then generates an answer. The prompt asks the model to answer based on the retrieved materials and avoid inventing unsupported information.
 
-9. Streamlit UI
+10. Streamlit UI
 
    `src/app.py` provides the web interface. Users can upload documents, rebuild the knowledge base, ask questions, view chat history, adjust top-k, apply metadata filters, and inspect retrieved sources.
 
@@ -160,10 +167,23 @@ V8 evaluates Dense, BM25, and Hybrid RRF on the same 30 questions without callin
 | BM25 | 53.33% | 70.00% | 70.00% | 0.6167 | 30.00% |
 | Hybrid RRF | 86.67% | 96.67% | 100.00% | 0.9122 | 0.00% |
 
-The result is honest rather than forced: Hybrid helped `disk-002`, but did not improve the overall metric set and introduced one Top-1 regression. The current recommendation is to keep Dense as the default and leave Hybrid RRF available for testing.
+The result is honest rather than forced: Hybrid helped `disk-002`, but did not improve the overall metric set and introduced one Top-1 regression. V8 kept Dense as the default and left Hybrid RRF available for testing.
+
+## V9 Reranker Evaluation
+
+V9 evaluates whether a Cross-Encoder can improve ranking after candidate retrieval.
+
+| Mode | Recall@1 | Recall@3 | Recall@5 | MRR | Zero-hit |
+|---|---:|---:|---:|---:|---:|
+| Dense | 86.67% | 100.00% | 100.00% | 0.9278 | 0.00% |
+| Hybrid RRF | 86.67% | 96.67% | 100.00% | 0.9122 | 0.00% |
+| Dense + Reranker | 96.67% | 100.00% | 100.00% | 0.9833 | 0.00% |
+| Hybrid + Reranker | 96.67% | 100.00% | 100.00% | 0.9833 | 0.00% |
+
+Candidate Recall@5 was 100.00%, which means the expected source was already present in the candidate set. The reranker improved final ordering for three known Dense misses. The cost is CPU latency and model loading time, so Dense + Reranker is now the quality-focused default, while Dense remains the fast mode.
 
 ## How to Explain This in an Interview
 
 A short explanation:
 
-> I built a local IT operations RAG assistant that reads troubleshooting runbooks from `data/raw`, attaches metadata from `data/metadata.json`, splits documents into chunks, converts chunks into BGE embeddings, stores them in Chroma, retrieves relevant chunks with optional metadata filters, and uses DeepSeek to generate answers in a Streamlit UI. I also display sources and snippets so the answer can be checked against the original documents.
+> I built a local IT operations RAG assistant that reads troubleshooting runbooks from `data/raw`, attaches metadata from `data/metadata.json`, splits documents into chunks, converts chunks into BGE embeddings, stores them in Chroma, retrieves relevant chunks with optional metadata filters, and can optionally rerank candidate chunks with a Cross-Encoder before DeepSeek generates an answer. I also display sources and snippets so the answer can be checked against the original documents.

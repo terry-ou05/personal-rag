@@ -16,10 +16,24 @@ try:
     from ingest import build_knowledge_base, load_documents
     from retrieval.common import split_documents_with_chunk_ids
     from retrieval.hybrid_retriever import HybridRetriever
+    from retrieval.reranked_retriever import RerankedRetriever
+    from retrieval.reranker import (
+        DEFAULT_RERANKER_BATCH_SIZE,
+        DEFAULT_RERANKER_DEVICE,
+        DEFAULT_RERANKER_MODEL,
+        CrossEncoderReranker,
+    )
 except ModuleNotFoundError:
     from src.ingest import build_knowledge_base, load_documents
     from src.retrieval.common import split_documents_with_chunk_ids
     from src.retrieval.hybrid_retriever import HybridRetriever
+    from src.retrieval.reranked_retriever import RerankedRetriever
+    from src.retrieval.reranker import (
+        DEFAULT_RERANKER_BATCH_SIZE,
+        DEFAULT_RERANKER_DEVICE,
+        DEFAULT_RERANKER_MODEL,
+        CrossEncoderReranker,
+    )
 
 
 load_dotenv()
@@ -33,7 +47,8 @@ EMBEDDING_MODEL = "BAAI/bge-small-zh-v1.5"
 LLM_MODEL = "deepseek-chat"
 COLLECTION_NAME = "personal_knowledge"
 RETRIEVER_TOP_K = 4
-DEFAULT_RETRIEVAL_MODE = "Dense"
+DEFAULT_RETRIEVAL_MODE = "Dense + Reranker"
+RERANKER_CANDIDATE_TOP_K = 5
 SUPPORTED_UPLOAD_SUFFIXES = {".txt", ".md", ".pdf"}
 FILTER_FIELDS = ["category", "system", "severity", "doc_type"]
 
@@ -84,7 +99,14 @@ def render_sources(sources: list[dict]) -> None:
             st.markdown(source["content"])
             rank_fields = {
                 key: source.get("metadata", {}).get(key)
-                for key in ["dense_rank", "bm25_rank", "fused_rank", "fused_score"]
+                for key in [
+                    "candidate_rank",
+                    "dense_rank",
+                    "bm25_rank",
+                    "fused_rank",
+                    "rerank_rank",
+                    "rerank_score",
+                ]
                 if source.get("metadata", {}).get(key) is not None
             }
             if rank_fields:
@@ -209,6 +231,15 @@ def build_retrieval_backend():
     )
 
 
+@st.cache_resource
+def build_reranker_backend():
+    return CrossEncoderReranker(
+        model_name=DEFAULT_RERANKER_MODEL,
+        device=DEFAULT_RERANKER_DEVICE,
+        batch_size=DEFAULT_RERANKER_BATCH_SIZE,
+    )
+
+
 class RetrievalQAChain:
     def __init__(
         self,
@@ -227,13 +258,31 @@ class RetrievalQAChain:
 
     def invoke(self, payload: dict) -> dict:
         question = payload["input"]
-        mode = "hybrid" if self.retrieval_mode == "Hybrid RRF" else "dense"
-        retrieval_results = self.retriever.retrieve(
-            question,
-            mode=mode,
-            top_k=self.top_k,
-            metadata_filter=self.metadata_filter,
-        )
+        if self.retrieval_mode in {"Dense + Reranker", "Hybrid + Reranker"}:
+            reranked_retriever = RerankedRetriever(
+                base_retriever=self.retriever,
+                reranker=build_reranker_backend(),
+                candidate_top_k=max(self.top_k, RERANKER_CANDIDATE_TOP_K),
+                final_top_k=self.top_k,
+            )
+            rerank_mode = (
+                "dense_rerank"
+                if self.retrieval_mode == "Dense + Reranker"
+                else "hybrid_rerank"
+            )
+            retrieval_results, _trace = reranked_retriever.retrieve(
+                question,
+                mode=rerank_mode,
+                metadata_filter=self.metadata_filter,
+            )
+        else:
+            mode = "hybrid" if self.retrieval_mode == "Hybrid RRF" else "dense"
+            retrieval_results = self.retriever.retrieve(
+                question,
+                mode=mode,
+                top_k=self.top_k,
+                metadata_filter=self.metadata_filter,
+            )
         context_docs = [result.to_document() for result in retrieval_results]
         answer = self.question_answer_chain.invoke(
             {
@@ -340,8 +389,10 @@ with st.sidebar:
     st.markdown("**Vector DB:** Chroma")
     retrieval_mode = st.radio(
         "Retrieval Mode",
-        options=["Dense", "Hybrid RRF"],
-        index=0 if DEFAULT_RETRIEVAL_MODE == "Dense" else 1,
+        options=["Dense", "Dense + Reranker", "Hybrid RRF", "Hybrid + Reranker"],
+        index=["Dense", "Dense + Reranker", "Hybrid RRF", "Hybrid + Reranker"].index(
+            DEFAULT_RETRIEVAL_MODE
+        ),
     )
     retriever_top_k = st.slider(
         "Retriever top-k",
@@ -442,8 +493,19 @@ if question:
         filter_to_items(metadata_filter),
     )
 
-    with st.spinner("正在检索知识库并生成回答..."):
-        result = rag_chain.invoke({"input": question})
+    spinner_text = (
+        "正在加载 Reranker、重排候选片段并生成回答..."
+        if "Reranker" in retrieval_mode
+        else "正在检索知识库并生成回答..."
+    )
+    with st.spinner(spinner_text):
+        try:
+            result = rag_chain.invoke({"input": question})
+        except RuntimeError as exc:
+            if "reranker" in str(exc).lower() or "cross-encoder" in str(exc).lower():
+                st.error(f"Reranker failed to load or run: {exc}")
+                st.stop()
+            raise
 
     context_docs = result.get("context", [])
     sources = build_source_items(context_docs)

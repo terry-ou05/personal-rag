@@ -20,6 +20,7 @@ This project focuses on demonstrating an AI coding workflow with Codex, practica
 - Retrieval evaluation baseline with Recall@K and MRR
 - Optional Hybrid Retrieval with BM25 + Reciprocal Rank Fusion
 - Dense / BM25 / Hybrid retrieval comparison report
+- Cross-Encoder reranker experiment with cold/warm latency reporting
 - AI coding workflow with Codex + Git branches + PR-style iteration
 
 ## Demo Status
@@ -50,6 +51,8 @@ Planned screenshot coverage:
 - BAAI/bge-small-zh-v1.5
 - BM25
 - Reciprocal Rank Fusion
+- Cross-Encoder Reranker
+- BAAI/bge-reranker-base
 - Streamlit
 - pypdf
 - python-dotenv
@@ -73,7 +76,9 @@ flowchart LR
     K --> R
     R --> H[Relevant Troubleshooting Chunks]
     G --> H
-    H --> I[DeepSeek Chat Model]
+    H --> X[Optional Cross-Encoder Reranker]
+    X --> I[DeepSeek Chat Model]
+    H --> I
     I --> J[Streamlit Answer with Sources]
 ```
 
@@ -92,8 +97,9 @@ flowchart LR
 - Tune retriever `top-k` from the sidebar
 - Filter retrieval by IT ops metadata fields
 - Choose Dense or optional Hybrid RRF retrieval in the Streamlit sidebar
+- Choose optional Dense + Reranker or Hybrid + Reranker modes
 - Display retrieved source names, metadata, page information, and reference snippets
-- Evaluate Dense, BM25, and Hybrid retrieval quality with a repeatable question set
+- Evaluate Dense, BM25, Hybrid, and reranked retrieval quality with a repeatable question set
 
 ## Project Structure
 
@@ -105,6 +111,7 @@ personal-rag/
 │   ├── ask.py           # Command-line RAG question-answering entry point
 │   ├── evaluate_retrieval.py          # V7 dense retrieval baseline
 │   ├── evaluate_hybrid_retrieval.py   # V8 Dense / BM25 / Hybrid evaluation
+│   ├── evaluate_reranker.py           # V9 Cross-Encoder reranker evaluation
 │   └── retrieval/       # Chunk IDs, tokenizer, BM25, RRF, and hybrid retriever
 ├── data/raw/            # Public IT ops sample documents and local knowledge files
 ├── data/metadata.json   # Metadata for public IT ops sample documents
@@ -179,6 +186,12 @@ Run the V8 Dense / BM25 / Hybrid retrieval comparison:
 & 'C:\Users\14985\Desktop\personal-rag\.venv\Scripts\python.exe' src\evaluate_hybrid_retrieval.py
 ```
 
+Run the V9 Cross-Encoder reranker evaluation:
+
+```powershell
+& 'C:\Users\14985\Desktop\personal-rag\.venv\Scripts\python.exe' src\evaluate_reranker.py
+```
+
 Run tests:
 
 ```powershell
@@ -238,6 +251,39 @@ Generated V8 reports:
 - `eval/reports/v8_hybrid_report.json`
 
 V8 does not add Qdrant, reranking, query rewrite, LangGraph, or an agent workflow. Those are possible later steps only if the retrieval evaluation shows a clear need.
+
+## V9 Cross-Encoder Reranker
+
+V9 adds a second-stage Cross-Encoder reranker experiment using `BAAI/bge-reranker-base` on CPU. It does not change the first-stage candidate retrieval logic. Dense and Hybrid still retrieve candidate chunks first, then the reranker scores query-chunk pairs and reorders only those candidates.
+
+A bi-encoder Dense retriever embeds queries and documents separately, which makes retrieval fast. A Cross-Encoder reads the query and chunk together, which is slower but can judge relevance more directly. For this reason, V9 reranks only Top-5 candidates instead of scoring the whole knowledge base.
+
+Current V9 result:
+
+| Mode | Recall@1 | Recall@3 | Recall@5 | MRR | Zero-hit |
+|---|---:|---:|---:|---:|---:|
+| Dense | 86.67% | 100.00% | 100.00% | 0.9278 | 0.00% |
+| Hybrid RRF | 86.67% | 96.67% | 100.00% | 0.9122 | 0.00% |
+| Dense + Reranker | 96.67% | 100.00% | 100.00% | 0.9833 | 0.00% |
+| Hybrid + Reranker | 96.67% | 100.00% | 100.00% | 0.9833 | 0.00% |
+
+Candidate Recall@5 was 100.00% for both Dense + Reranker and Hybrid + Reranker. Dense + Reranker improved three V7 non-Top-1 cases (`disk-002`, `disk-003`, `login-005`) and introduced no Top-1 regressions. The remaining hard case, `nginx-005`, stayed at rank 2.
+
+Latency tradeoff:
+
+- Model load time: 8201.15 ms
+- Dense + Reranker cold first query: 739.63 ms
+- Dense + Reranker warm average rerank latency: 749.12 ms
+- Dense + Reranker warm P95 rerank latency: 781.21 ms
+
+Recommendation: Dense + Reranker gives the best ranking metrics in this small evaluation and is the default quality mode in the Streamlit UI. Dense remains available as the lightweight mode when speed or first-query model loading matters more.
+
+Generated V9 reports:
+
+- `eval/reports/v9_reranker_report.md`
+- `eval/reports/v9_reranker_report.json`
+
+V9 does not add Query Rewrite, Qdrant, LangGraph, multi-step agents, or FastAPI.
 
 ## Example Questions
 

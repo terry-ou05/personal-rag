@@ -4,7 +4,7 @@
 
 IT Ops Knowledge Base RAG Assistant is a local RAG question-answering system I built for simulated IT operations troubleshooting documents. It uses LangChain, DeepSeek, Chroma, BGE Embedding, and Streamlit. The app can load TXT, Markdown, and PDF files, attach metadata, build a local vector knowledge base, and answer questions based on retrieved document chunks.
 
-The project also supports web-based document upload, one-click knowledge-base rebuild, metadata filtering, chat history, adjustable top-k retrieval, source/reference snippet display, retrieval baseline evaluation, and an optional Hybrid Retrieval mode. I used Codex to help with coding, debugging, documentation, verification commands, and Git branch-based iteration.
+The project also supports web-based document upload, one-click knowledge-base rebuild, metadata filtering, chat history, adjustable top-k retrieval, source/reference snippet display, retrieval baseline evaluation, optional Hybrid Retrieval, and optional Cross-Encoder reranking. I used Codex to help with coding, debugging, documentation, verification commands, and Git branch-based iteration.
 
 ## 3-Minute Project Introduction
 
@@ -17,6 +17,8 @@ The web interface is built with Streamlit in `src/app.py`. It lets users upload 
 In V7, I added a retrieval evaluation baseline. It uses 30 manually checked questions from the public IT ops documents and measures Recall@1, Recall@3, Recall@5, MRR, zero-hit rate, and retrieval latency. The current dense Chroma retriever reaches Recall@1 86.67%, Recall@3 100%, Recall@5 100%, and MRR 0.9278.
 
 In V8, I added BM25 sparse retrieval and Reciprocal Rank Fusion. The result was not blindly positive: Hybrid kept Recall@1 at 86.67% but reduced MRR to 0.9122 and introduced one Top-1 regression, so I kept Dense as the default and exposed Hybrid as an optional mode.
+
+In V9, I added a Cross-Encoder reranker experiment using `BAAI/bge-reranker-base`. Dense + Reranker improved Recall@1 to 96.67% and MRR to 0.9833 with no Top-1 regression, but it added CPU latency and model load time.
 
 For development, I used Codex as an AI coding assistant. I asked it to inspect the codebase, make scoped changes, run verification commands, improve documentation, and manage Git branches. This helped me practice a more structured AI coding workflow rather than only writing small isolated scripts.
 
@@ -70,6 +72,22 @@ RRF stands for Reciprocal Rank Fusion. It gives each retrieved chunk a score bas
 
 It improved one known Dense weakness, `disk-002`, by moving the expected disk document from rank 2 to rank 1. But it also caused one Top-1 regression and lowered MRR. So the honest conclusion is to keep Dense as the default and leave Hybrid as an optional experiment.
 
+### What is a Cross-Encoder reranker?
+
+A Cross-Encoder scores a query and a candidate chunk together. It is slower than Dense retrieval, but it can make a more direct relevance judgment. In this project, it is used only after Dense or Hybrid retrieves Top-5 candidates.
+
+### Why not run the Cross-Encoder on every document?
+
+Because Cross-Encoder scoring is much more expensive. The scalable pattern is candidate retrieval first, then reranking a small candidate set. This keeps the system understandable and avoids turning every query into a full-corpus model scoring task.
+
+### Did V9 improve the results?
+
+Yes, on this small evaluation set. Dense + Reranker improved Recall@1 from 86.67% to 96.67% and MRR from 0.9278 to 0.9833. It improved `disk-002`, `disk-003`, and `login-005`, while `nginx-005` remained not Top-1. The tradeoff is latency: model loading took about 8.20 seconds in the final cached run and warm reranking averaged about 749 ms on CPU. I made Dense + Reranker the quality-focused default, while keeping Dense available for faster use.
+
+### Why not implement Query Rewrite now?
+
+V9 is focused on verifying whether reranking improves candidate ordering. Query Rewrite changes the input query and can affect recall behavior, so it should be evaluated separately after the reranker baseline is clear.
+
 ### What is metadata filtering?
 
 Metadata filtering narrows retrieval by fields such as category, system, severity, and document type. In this project, it makes the search closer to an enterprise knowledge-base workflow where documents are organized by operational context.
@@ -88,11 +106,11 @@ I defined the project goal, selected the feature direction, reviewed each change
 
 ### What are the project's limitations?
 
-It is still a local showcase project. It does not include public deployment, user accounts, cloud storage, OCR, reranking, Qdrant, automated CI, or production monitoring. Uploaded private files also need to be handled carefully and should not be committed to Git.
+It is still a local showcase project. It does not include public deployment, user accounts, cloud storage, OCR, Qdrant, automated CI, or production monitoring. Uploaded private files also need to be handled carefully and should not be committed to Git.
 
 ### If you continue improving it, what would you do next?
 
-I would use the V8 report as the control group, then try a reranker on top of the Dense and Hybrid candidates. I would only keep it if it improves Recall@1 or MRR without unacceptable latency or regressions.
+I would use the V9 report as the control group, then consider Conditional Query Rewrite for vague questions that are still not fixed by reranking. I would keep it as a separate experiment because query rewrite changes the retrieval input, not just the ranking order.
 
 ### Why did you choose Streamlit?
 

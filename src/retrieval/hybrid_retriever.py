@@ -45,7 +45,13 @@ class HybridRetriever:
             **search_kwargs,
         )
         return [
-            result_from_document(document, dense_score=float(score), dense_rank=rank)
+            result_from_document(
+                document,
+                retrieval_mode="dense",
+                candidate_rank=rank,
+                dense_score=float(score),
+                dense_rank=rank,
+            )
             for rank, (document, score) in enumerate(docs_and_scores, start=1)
         ]
 
